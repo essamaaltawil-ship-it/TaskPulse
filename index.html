@@ -1,0 +1,1813 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام إدارة أعمال رئيس قسم الحسابات</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#1e3a8a', // Blue 900
+                        secondary: '#3b82f6', // Blue 500
+                        darkbg: '#111827',
+                        darkcard: '#1f2937'
+                    },
+                    fontFamily: {
+                        sans: ['Tajawal', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        body { font-family: 'Tajawal', sans-serif; background-color: #f3f4f6; transition: background-color 0.3s; }
+        .dark body { background-color: #111827; color: #f9fafb; }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        .dark ::-webkit-scrollbar-track { background: #374151; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .dark ::-webkit-scrollbar-thumb { background: #4b5563; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        /* Sidebar transition */
+        #sidebar { transition: transform 0.3s ease-in-out; }
+        
+        /* Print Styles */
+        @media print {
+            html, body { height: auto !important; overflow: visible !important; background: white !important; }
+            body * { visibility: hidden; }
+            #print-area { display: block !important; visibility: visible !important; position: absolute; left: 0; top: 0; width: 100%; direction: rtl; }
+            #print-area * { visibility: visible !important; color: black !important; }
+            .no-print { display: none !important; }
+            .print-card { border: 1px solid #ccc; padding: 15px; margin-bottom: 15px; page-break-inside: avoid; }
+            .print-table { width: 100%; border-collapse: collapse; }
+            .print-table th, .print-table td { border: 1px solid #000; padding: 8px; text-align: right; }
+        }
+
+        .glass-effect { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
+        .dark .glass-effect { background: rgba(31, 41, 55, 0.95); }
+
+        .modal-content { max-height: 90vh; overflow-y: auto; }
+        
+        /* Form inputs */
+        .form-input { 
+            width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; 
+            background-color: white; color: #111827;
+        }
+        .dark .form-input {
+            background-color: #374151; border-color: #4b5563; color: white;
+        }
+        .form-input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 1px #3b82f6; }
+        
+        /* Header Inputs */
+        .header-input { 
+            width: 100%; padding: 0.25rem; border: 1px solid #d1d5db; border-radius: 0.25rem; 
+            font-weight: normal; margin-top: 0.25rem; color: #111827; font-size: 0.75rem;
+        }
+        .dark .header-input { background-color: #374151; border-color: #4b5563; color: white; }
+    </style>
+</head>
+<body class="text-gray-800 antialiased h-screen flex overflow-hidden">
+
+    <!-- Notification Toast -->
+    <div id="toast" class="fixed top-5 left-1/2 transform -translate-x-1/2 z-50 transition-all duration-300 opacity-0 hidden">
+        <div class="bg-gray-800 text-white px-6 py-3 rounded shadow-lg flex items-center gap-3">
+            <i id="toast-icon" class="fas fa-info-circle"></i>
+            <span id="toast-msg">رسالة</span>
+        </div>
+    </div>
+
+    <!-- Task Hover Tooltip Container -->
+    <div id="task-tooltip" class="fixed z-50 hidden bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-2xl rounded-lg p-4 w-80 pointer-events-none transition-opacity duration-200 opacity-0" style="direction: rtl;"></div>
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="bg-primary text-white w-64 flex-shrink-0 hidden md:flex flex-col shadow-xl z-20">
+        <div class="p-5 flex items-center justify-center border-b border-blue-800">
+            <i class="fas fa-calculator text-3xl ml-3 text-blue-300"></i>
+            <h1 class="text-xl font-bold font-sans tracking-wide">إدارة الحسابات</h1>
+        </div>
+        <nav class="flex-1 overflow-y-auto py-4 space-y-1">
+            <a href="#" onclick="nav('dashboard')" class="nav-link block px-5 py-3 hover:bg-blue-800 transition border-r-4 border-transparent hover:border-blue-400 active-nav" data-target="dashboard"><i class="fas fa-home ml-3 w-5"></i> لوحة القيادة</a>
+            <a href="#" onclick="nav('employees')" class="nav-link block px-5 py-3 hover:bg-blue-800 transition border-r-4 border-transparent hover:border-blue-400" data-target="employees"><i class="fas fa-users ml-3 w-5"></i> إدارة الموظفين</a>
+            <a href="#" onclick="nav('elementTypes')" class="nav-link block px-5 py-3 hover:bg-blue-800 transition border-r-4 border-transparent hover:border-blue-400" data-target="elementTypes"><i class="fas fa-tags ml-3 w-5"></i> أنواع العناصر</a>
+            <a href="#" onclick="nav('elements')" class="nav-link block px-5 py-3 hover:bg-blue-800 transition border-r-4 border-transparent hover:border-blue-400" data-target="elements"><i class="fas fa-cubes ml-3 w-5"></i> عناصر العمل</a>
+            <a href="#" onclick="nav('assignments')" class="nav-link block px-5 py-3 hover:bg-blue-800 transition border-r-4 border-transparent hover:border-blue-400" data-target="assignments"><i class="fas fa-link ml-3 w-5"></i> إسناد العناصر</a>
+            <a href="#" onclick="nav('tasks')" class="nav-link block px-5 py-3 hover:bg-blue-800 transition border-r-4 border-transparent hover:border-blue-400" data-target="tasks"><i class="fas fa-tasks ml-3 w-5"></i> المهام الرئيسية</a>
+            <a href="#" onclick="nav('requirements')" class="nav-link block px-5 py-3 hover:bg-blue-800 transition border-r-4 border-transparent hover:border-blue-400" data-target="requirements"><i class="fas fa-list-check ml-3 w-5"></i> المتطلبات</a>
+            <a href="#" onclick="nav('handovers')" class="nav-link block px-5 py-3 hover:bg-blue-800 transition border-r-4 border-transparent hover:border-blue-400" data-target="handovers"><i class="fas fa-exchange-alt ml-3 w-5"></i> التسليم والاستلام</a>
+            <a href="#" onclick="nav('reports')" class="nav-link block px-5 py-3 hover:bg-blue-800 transition border-r-4 border-transparent hover:border-blue-400" data-target="reports"><i class="fas fa-chart-bar ml-3 w-5"></i> التقارير</a>
+            <a href="#" onclick="nav('audit')" class="nav-link block px-5 py-3 hover:bg-blue-800 transition border-r-4 border-transparent hover:border-blue-400" data-target="audit"><i class="fas fa-history ml-3 w-5"></i> سجل الحركة</a>
+            <a href="#" onclick="nav('settings')" class="nav-link block px-5 py-3 hover:bg-blue-800 transition border-r-4 border-transparent hover:border-blue-400" data-target="settings"><i class="fas fa-cog ml-3 w-5"></i> الإعدادات</a>
+        </nav>
+        <div class="p-4 border-t border-blue-800 text-sm text-center text-blue-300">
+            الإصدار 1.0.0
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="flex-1 flex flex-col h-full overflow-hidden relative">
+        <!-- Topbar -->
+        <header class="glass-effect shadow-sm h-16 flex items-center justify-between px-6 z-10 border-b border-gray-200 dark:border-gray-700">
+            <div class="flex items-center gap-4">
+                <button onclick="toggleSidebar()" class="md:hidden text-gray-600 dark:text-gray-300 hover:text-primary">
+                    <i class="fas fa-bars text-xl"></i>
+                </button>
+                <h2 id="page-title" class="text-xl font-bold text-gray-800 dark:text-white">لوحة القيادة</h2>
+            </div>
+            <div class="flex items-center gap-4">
+                <button onclick="toggleDarkMode()" class="text-gray-500 hover:text-yellow-500 transition" title="تبديل المظهر">
+                    <i id="theme-icon" class="fas fa-moon text-xl"></i>
+                </button>
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold">م</div>
+                    <span class="text-sm font-medium dark:text-gray-200 hidden sm:block">رئيس الحسابات</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Dynamic Content Area -->
+        <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 dark:bg-darkbg p-4 md:p-6" id="main-content">
+            <!-- Sections will be injected here via JS -->
+            <div id="view-dashboard" class="view-section"></div>
+            <div id="view-employees" class="view-section hidden"></div>
+            <div id="view-elementTypes" class="view-section hidden"></div>
+            <div id="view-elements" class="view-section hidden"></div>
+            <div id="view-assignments" class="view-section hidden"></div>
+            <div id="view-tasks" class="view-section hidden"></div>
+            <div id="view-requirements" class="view-section hidden"></div>
+            <div id="view-handovers" class="view-section hidden"></div>
+            <div id="view-reports" class="view-section hidden"></div>
+            <div id="view-audit" class="view-section hidden"></div>
+            <div id="view-settings" class="view-section hidden"></div>
+        </main>
+    </div>
+
+    <!-- Print Area -->
+    <div id="print-area" class="hidden bg-white text-black p-8"></div>
+
+    <!-- Global Modals Container -->
+    <div id="modals-container"></div>
+
+    <!-- Application Script -->
+    <script>
+        // --- State Management ---
+        const DB_KEY = 'AccountingDeptSystemDB';
+        let db = {
+            employees: [],
+            elementTypes: [],
+            elements: [],
+            assignments: [],
+            tasks: [],
+            requirements: [],
+            handovers: [],
+            auditLog: [],
+            settings: { darkMode: false }
+        };
+
+        // --- Core Functions ---
+        function initDB() {
+            const stored = localStorage.getItem(DB_KEY);
+            if (stored) {
+                try {
+                    db = JSON.parse(stored);
+                    if(db.settings && db.settings.darkMode) {
+                        document.documentElement.classList.add('dark');
+                        document.getElementById('theme-icon').classList.replace('fa-moon', 'fa-sun');
+                    }
+                } catch(e) { console.error("Error loading DB", e); seedDB(); }
+            } else {
+                seedDB();
+            }
+            renderDashboard();
+        }
+
+        function saveDB() {
+            localStorage.setItem(DB_KEY, JSON.stringify(db));
+        }
+
+        function generateId() {
+            return 'id-' + Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+        }
+
+        function logAction(action, entity, entityId, desc, user = 'رئيس الحسابات', prev = null, current = null) {
+            db.auditLog.unshift({
+                id: generateId(),
+                timestamp: new Date().toISOString(),
+                action, entity, entityId, desc, user, prev, current
+            });
+            saveDB();
+        }
+
+        function showToast(msg, type = 'info') {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toast-icon');
+            document.getElementById('toast-msg').innerText = msg;
+            
+            toast.className = 'fixed top-5 left-1/2 transform -translate-x-1/2 z-50 transition-all duration-300 flex items-center gap-3 px-6 py-3 rounded shadow-lg text-white';
+            
+            if(type === 'success') {
+                toast.classList.add('bg-green-600'); icon.className = 'fas fa-check-circle';
+            } else if(type === 'error') {
+                toast.classList.add('bg-red-600'); icon.className = 'fas fa-exclamation-triangle';
+            } else {
+                toast.classList.add('bg-gray-800'); icon.className = 'fas fa-info-circle';
+            }
+
+            toast.classList.remove('hidden', 'opacity-0');
+            toast.classList.add('opacity-100');
+
+            setTimeout(() => {
+                toast.classList.remove('opacity-100');
+                toast.classList.add('opacity-0');
+                setTimeout(() => toast.classList.add('hidden'), 300);
+            }, 3000);
+        }
+
+        // --- UI Navigation & Theme ---
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            if(sidebar.classList.contains('hidden')) {
+                sidebar.classList.remove('hidden');
+                sidebar.classList.add('absolute', 'h-full');
+            } else {
+                sidebar.classList.add('hidden');
+                sidebar.classList.remove('absolute', 'h-full');
+            }
+        }
+
+        function toggleDarkMode() {
+            const html = document.documentElement;
+            const icon = document.getElementById('theme-icon');
+            db.settings.darkMode = !db.settings.darkMode;
+            if (db.settings.darkMode) {
+                html.classList.add('dark');
+                icon.classList.replace('fa-moon', 'fa-sun');
+            } else {
+                html.classList.remove('dark');
+                icon.classList.replace('fa-sun', 'fa-moon');
+            }
+            saveDB();
+        }
+
+        const sectionTitles = {
+            'dashboard': 'لوحة القيادة', 'employees': 'إدارة الموظفين', 'elementTypes': 'أنواع العناصر',
+            'elements': 'عناصر العمل', 'assignments': 'إسناد العناصر', 'tasks': 'المهام الرئيسية',
+            'requirements': 'متطلبات المهام', 'handovers': 'التسليم والاستلام', 'reports': 'التقارير',
+            'audit': 'سجل الحركة', 'settings': 'الإعدادات'
+        };
+
+        function nav(section) {
+            // Update links
+            document.querySelectorAll('.nav-link').forEach(el => {
+                el.classList.remove('bg-blue-800', 'border-blue-400');
+                el.classList.add('border-transparent');
+            });
+            document.querySelector(`[data-target="${section}"]`).classList.add('bg-blue-800', 'border-blue-400');
+            document.querySelector(`[data-target="${section}"]`).classList.remove('border-transparent');
+
+            // Hide all sections
+            document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
+            
+            // Show target
+            document.getElementById(`view-${section}`).classList.remove('hidden');
+            document.getElementById('page-title').innerText = sectionTitles[section];
+
+            // Mobile close sidebar
+            if(window.innerWidth < 768) { document.getElementById('sidebar').classList.add('hidden'); }
+
+            // Render specific section
+            switch(section) {
+                case 'dashboard': renderDashboard(); break;
+                case 'employees': renderEmployees(); break;
+                case 'elementTypes': renderElementTypes(); break;
+                case 'elements': renderElements(); break;
+                case 'assignments': renderAssignments(); break;
+                case 'tasks': renderTasks(); break;
+                case 'requirements': renderRequirements(); break;
+                case 'handovers': renderHandovers(); break;
+                case 'reports': renderReports(); break;
+                case 'audit': renderAudit(); break;
+                case 'settings': renderSettings(); break;
+            }
+        }
+
+        // --- Modal System ---
+        function openModal(id, htmlContent) {
+            let container = document.getElementById('modals-container');
+            container.innerHTML = `
+                <div id="${id}" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 transition-opacity">
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-2xl mx-4 modal-content transform transition-transform scale-100">
+                        ${htmlContent}
+                    </div>
+                </div>
+            `;
+            // Close on escape
+            document.addEventListener('keydown', function escListener(e) {
+                if(e.key === 'Escape') { closeModal(id); document.removeEventListener('keydown', escListener); }
+            });
+        }
+
+        function closeModal(id) {
+            const modal = document.getElementById(id);
+            if(modal) {
+                modal.classList.add('opacity-0');
+                setTimeout(() => modal.remove(), 200);
+            }
+        }
+
+        function filterTable(tableId, query) {
+            const table = document.getElementById(tableId);
+            if (!table) return;
+            const tbody = table.querySelector('tbody');
+            if (!tbody) return;
+            const rows = tbody.getElementsByTagName('tr');
+            const filter = query.toLowerCase();
+            for (let i = 0; i < rows.length; i++) {
+                const rowText = rows[i].textContent || rows[i].innerText;
+                rows[i].style.display = rowText.toLowerCase().includes(filter) ? '' : 'none';
+            }
+        }
+        
+        // دالة لعرض السجل التاريخي لأي عنصر (مهمة أو متطلب)
+        function viewEntityHistory(entityId, title) {
+            const logs = db.auditLog.filter(l => l.entityId === entityId);
+            let html = `
+                <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800 rounded-t-lg">
+                    <h3 class="text-lg font-bold dark:text-white"><i class="fas fa-history text-purple-500 ml-2"></i> سجل حركة: ${title}</h3>
+                    <button onclick="closeModal('historyModal')" class="text-gray-500 hover:text-red-500"><i class="fas fa-times text-xl"></i></button>
+                </div>
+                <div class="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
+                    ${logs.length === 0 ? '<p class="text-gray-500 text-center py-4">لا يوجد سجل حركات حتى الآن.</p>' : 
+                        '<ul class="space-y-4 relative border-r-2 border-gray-200 dark:border-gray-700 pr-4 mr-2">' +
+                        logs.map(l => `
+                            <li class="relative">
+                                <div class="absolute w-3 h-3 bg-purple-500 rounded-full -right-[1.4rem] top-1"></div>
+                                <div class="bg-gray-50 dark:bg-gray-700 p-3 rounded shadow-sm border border-gray-100 dark:border-gray-600">
+                                    <div class="flex justify-between items-center mb-1 text-sm">
+                                        <span class="font-bold text-indigo-600 dark:text-indigo-400">${l.action}</span>
+                                        <span class="text-gray-500 text-xs" dir="ltr">${new Date(l.timestamp).toLocaleString('ar-SA')}</span>
+                                    </div>
+                                    <p class="text-gray-800 dark:text-gray-200 text-sm leading-relaxed">${l.desc}</p>
+                                    <p class="text-gray-500 text-xs mt-2"><i class="fas fa-user ml-1"></i>بواسطة: ${l.user}</p>
+                                </div>
+                            </li>
+                        `).join('') + '</ul>'
+                    }
+                </div>
+            `;
+            openModal('historyModal', html);
+        }
+
+        // --- Task Tooltip Logic ---
+        let currentTooltipTask = null;
+
+        function setupTaskTooltip(taskId) {
+            currentTooltipTask = taskId;
+            const tooltip = document.getElementById('task-tooltip');
+            const task = db.tasks.find(t => t.id === taskId);
+            if (!task) return;
+
+            const incompleteReqs = db.requirements.filter(r => r.taskId === taskId && r.status !== 'مكتمل' && r.status !== 'ملغى');
+            
+            let reqsHtml = '';
+            if (incompleteReqs.length > 0) {
+                reqsHtml = `<ul class="list-disc list-inside text-xs mt-1 text-red-600 dark:text-red-400 max-h-32 overflow-y-auto">
+                    ${incompleteReqs.map(r => {
+                        const empName = db.employees.find(emp => emp.id === r.employeeId)?.name || 'غير محدد';
+                        return `<li class="mb-1">${r.title} <span class="text-gray-500 text-[10px]">(${empName}) - ${r.status}</span></li>`;
+                    }).join('')}
+                </ul>`;
+            } else {
+                reqsHtml = `<p class="text-xs text-green-600 dark:text-green-400 mt-2"><i class="fas fa-check-circle"></i> جميع المتطلبات منجزة</p>`;
+            }
+
+            tooltip.innerHTML = `
+                <div class="border-b dark:border-gray-700 pb-2 mb-2">
+                    <h4 class="font-bold text-sm text-primary dark:text-blue-400">${task.title}</h4>
+                    <span class="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 mt-1 inline-block">${task.status}</span>
+                </div>
+                <p class="text-xs text-gray-600 dark:text-gray-300 mb-3 line-clamp-2">${task.description || 'لا يوجد وصف'}</p>
+                <h5 class="font-bold text-xs text-gray-800 dark:text-gray-200 mb-1">المتطلبات غير المنجزة (${incompleteReqs.length}):</h5>
+                ${reqsHtml}
+            `;
+            
+            tooltip.classList.remove('hidden');
+            setTimeout(() => tooltip.classList.remove('opacity-0'), 10);
+        }
+
+        function moveTaskTooltip(e) {
+            const tooltip = document.getElementById('task-tooltip');
+            if(tooltip.classList.contains('hidden')) return;
+
+            const tooltipWidth = 320; // w-80
+            let top = e.clientY + 15;
+            let left = e.clientX - tooltipWidth - 15;
+
+            // Prevent overflowing screen boundaries
+            if (left < 10) left = e.clientX + 15;
+            if (top + tooltip.offsetHeight > window.innerHeight) top = window.innerHeight - tooltip.offsetHeight - 10;
+
+            tooltip.style.top = `${top}px`;
+            tooltip.style.left = `${left}px`;
+        }
+
+        function hideTaskTooltip() {
+            currentTooltipTask = null;
+            const tooltip = document.getElementById('task-tooltip');
+            tooltip.classList.add('opacity-0');
+            setTimeout(() => {
+                if(!currentTooltipTask) tooltip.classList.add('hidden');
+            }, 200);
+        }
+
+        // --- View Renderers ---
+
+        // 1. Dashboard
+        function renderDashboard() {
+            const v = document.getElementById('view-dashboard');
+            
+            const activeEmp = db.employees.filter(e => !e.isDeleted && e.status === 'نشط').length;
+            const activeElements = db.elements.filter(e => e.status === 'نشط').length;
+            const openTasks = db.tasks.filter(t => ['جديدة','قيد التنفيذ','بانتظار متطلبات'].includes(t.status)).length;
+            const lateTasks = db.tasks.filter(t => ['جديدة','قيد التنفيذ','بانتظار متطلبات'].includes(t.status) && new Date(t.dueDate) < new Date()).length;
+            
+            const openReqs = db.requirements.filter(r => ['جديد','مسند','قيد التنفيذ','بانتظار بيانات', 'معاد للتصحيح'].includes(r.status)).length;
+            const openHandovers = db.handovers.filter(h => h.status === 'مفتوح').length;
+
+            v.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-white dark:bg-darkcard p-4 rounded-lg shadow border-r-4 border-blue-500 flex items-center justify-between">
+                        <div><p class="text-gray-500 dark:text-gray-400 text-sm">الموظفون النشطون</p><h3 class="text-2xl font-bold dark:text-white">${activeEmp}</h3></div>
+                        <div class="text-blue-500 bg-blue-100 dark:bg-blue-900 p-3 rounded-full"><i class="fas fa-users"></i></div>
+                    </div>
+                    <div class="bg-white dark:bg-darkcard p-4 rounded-lg shadow border-r-4 border-indigo-500 flex items-center justify-between">
+                        <div><p class="text-gray-500 dark:text-gray-400 text-sm">عناصر العمل النشطة</p><h3 class="text-2xl font-bold dark:text-white">${activeElements}</h3></div>
+                        <div class="text-indigo-500 bg-indigo-100 dark:bg-indigo-900 p-3 rounded-full"><i class="fas fa-cubes"></i></div>
+                    </div>
+                    <div class="bg-white dark:bg-darkcard p-4 rounded-lg shadow border-r-4 border-green-500 flex items-center justify-between">
+                        <div><p class="text-gray-500 dark:text-gray-400 text-sm">المهام المفتوحة</p><h3 class="text-2xl font-bold dark:text-white">${openTasks}</h3></div>
+                        <div class="text-green-500 bg-green-100 dark:bg-green-900 p-3 rounded-full"><i class="fas fa-tasks"></i></div>
+                    </div>
+                    <div class="bg-white dark:bg-darkcard p-4 rounded-lg shadow border-r-4 border-red-500 flex items-center justify-between">
+                        <div><p class="text-gray-500 dark:text-gray-400 text-sm">المهام المتأخرة</p><h3 class="text-2xl font-bold dark:text-white">${lateTasks}</h3></div>
+                        <div class="text-red-500 bg-red-100 dark:bg-red-900 p-3 rounded-full"><i class="fas fa-exclamation-circle"></i></div>
+                    </div>
+                    <div class="bg-white dark:bg-darkcard p-4 rounded-lg shadow border-r-4 border-yellow-500 flex items-center justify-between">
+                        <div><p class="text-gray-500 dark:text-gray-400 text-sm">المتطلبات المفتوحة</p><h3 class="text-2xl font-bold dark:text-white">${openReqs}</h3></div>
+                        <div class="text-yellow-500 bg-yellow-100 dark:bg-yellow-900 p-3 rounded-full"><i class="fas fa-list"></i></div>
+                    </div>
+                    <div class="bg-white dark:bg-darkcard p-4 rounded-lg shadow border-r-4 border-purple-500 flex items-center justify-between">
+                        <div><p class="text-gray-500 dark:text-gray-400 text-sm">تسليم واستلام مفتوح</p><h3 class="text-2xl font-bold dark:text-white">${openHandovers}</h3></div>
+                        <div class="text-purple-500 bg-purple-100 dark:bg-purple-900 p-3 rounded-full"><i class="fas fa-exchange-alt"></i></div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Workload -->
+                    <div class="bg-white dark:bg-darkcard p-5 rounded-lg shadow">
+                        <h3 class="text-lg font-bold mb-4 border-b pb-2 dark:text-white">عبء العمل على الموظفين</h3>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full text-sm text-right dark:text-gray-200">
+                                <thead class="bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+                                    <tr><th class="py-2 px-3">الموظف</th><th class="py-2 px-3">العناصر المسندة</th><th class="py-2 px-3">المتطلبات المفتوحة</th></tr>
+                                </thead>
+                                <tbody>
+                                    ${db.employees.filter(e => !e.isDeleted).map(emp => {
+                                        const assignments = db.assignments.filter(a => a.employeeId === emp.id && a.status === 'نشط').length;
+                                        const reqs = db.requirements.filter(r => r.employeeId === emp.id && ['جديد','مسند','قيد التنفيذ','بانتظار بيانات','معاد للتصحيح'].includes(r.status)).length;
+                                        return `<tr class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"><td class="py-2 px-3">${emp.name}</td><td class="py-2 px-3">${assignments}</td><td class="py-2 px-3 text-yellow-600 font-bold">${reqs}</td></tr>`;
+                                    }).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Alerts -->
+                    <div class="bg-white dark:bg-darkcard p-5 rounded-lg shadow">
+                        <h3 class="text-lg font-bold mb-4 border-b pb-2 text-red-600">مهام قريبة من الاستحقاق أو متأخرة</h3>
+                        <ul class="space-y-3">
+                            ${db.tasks.filter(t => ['جديدة','قيد التنفيذ','بانتظار متطلبات'].includes(t.status))
+                                .sort((a,b) => new Date(a.dueDate) - new Date(b.dueDate))
+                                .slice(0, 5)
+                                .map(t => {
+                                    const isLate = new Date(t.dueDate) < new Date();
+                                    return `
+                                    <li class="p-3 rounded bg-gray-50 dark:bg-gray-700 border-r-4 ${isLate ? 'border-red-500' : 'border-yellow-500'}">
+                                        <div class="flex justify-between items-center">
+                                            <span class="font-bold text-gray-800 dark:text-white">${t.title}</span>
+                                            <span class="text-xs px-2 py-1 rounded ${isLate ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}">${t.dueDate}</span>
+                                        </div>
+                                    </li>`
+                                }).join('') || '<li class="text-gray-500">لا توجد مهام متأخرة</li>'}
+                        </ul>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 2. Employees
+        function renderEmployees() {
+            const v = document.getElementById('view-employees');
+            let emps = db.employees.filter(e => !e.isDeleted);
+            
+            let html = `
+                <div class="flex justify-between items-center mb-4">
+                    <button onclick="openEmployeeForm()" class="bg-primary hover:bg-blue-800 text-white px-4 py-2 rounded shadow transition"><i class="fas fa-plus ml-2"></i> إضافة موظف</button>
+                    <input type="text" id="emp-search" placeholder="بحث بالاسم..." class="form-input w-64" onkeyup="filterTable('emp-table', this.value)">
+                </div>
+                <div class="bg-white dark:bg-darkcard rounded-lg shadow overflow-x-auto">
+                    <table class="min-w-full text-right" id="emp-table">
+                        <thead class="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200">
+                            <tr>
+                                <th class="px-4 py-3">الرقم</th><th class="px-4 py-3">الاسم</th><th class="px-4 py-3">المسمى</th>
+                                <th class="px-4 py-3">القسم</th><th class="px-4 py-3">الحالة</th><th class="px-4 py-3">إجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200 dark:divide-gray-700 dark:text-gray-300">
+                            ${emps.map(e => `
+                                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                                    <td class="px-4 py-3">${e.code}</td><td class="px-4 py-3 font-medium">${e.name}</td>
+                                    <td class="px-4 py-3">${e.title}</td><td class="px-4 py-3">${e.department}</td>
+                                    <td class="px-4 py-3"><span class="px-2 py-1 text-xs rounded-full ${e.status==='نشط'?'bg-green-100 text-green-800':'bg-red-100 text-red-800'}">${e.status}</span></td>
+                                    <td class="px-4 py-3 flex gap-2">
+                                        <button onclick="openEmployeeForm('${e.id}')" class="text-blue-500 hover:text-blue-700" title="تعديل"><i class="fas fa-edit"></i></button>
+                                        <button onclick="deleteEmployee('${e.id}')" class="text-red-500 hover:text-red-700" title="حذف"><i class="fas fa-trash"></i></button>
+                                        <button onclick="viewEmployeeDetails('${e.id}')" class="text-gray-500 hover:text-gray-700 dark:text-gray-400" title="التفاصيل"><i class="fas fa-eye"></i></button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            v.innerHTML = html;
+        }
+
+        function openEmployeeForm(id = null) {
+            let e = id ? db.employees.find(x => x.id === id) : {};
+            let empsOpts = db.employees.filter(x => x.id !== id && !x.isDeleted).map(x => `<option value="${x.id}" ${e.backupId===x.id?'selected':''}>${x.name}</option>`).join('');
+            
+            let html = `
+                <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center">
+                    <h3 class="text-lg font-bold dark:text-white">${id ? 'تعديل موظف' : 'إضافة موظف'}</h3>
+                    <button onclick="closeModal('empModal')" class="text-gray-500 hover:text-red-500"><i class="fas fa-times text-xl"></i></button>
+                </div>
+                <div class="p-4">
+                    <form id="empForm" onsubmit="saveEmployee(event, '${id}')" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div><label class="block text-sm mb-1 dark:text-gray-300">رقم الموظف</label><input type="text" id="ef_code" value="${e.code||''}" required class="form-input"></div>
+                        <div><label class="block text-sm mb-1 dark:text-gray-300">الاسم</label><input type="text" id="ef_name" value="${e.name||''}" required class="form-input"></div>
+                        <div><label class="block text-sm mb-1 dark:text-gray-300">المسمى الوظيفي</label><input type="text" id="ef_title" value="${e.title||''}" class="form-input"></div>
+                        <div><label class="block text-sm mb-1 dark:text-gray-300">القسم</label><input type="text" id="ef_dept" value="${e.department||''}" class="form-input"></div>
+                        <div>
+                            <label class="block text-sm mb-1 dark:text-gray-300">الحالة</label>
+                            <select id="ef_status" class="form-input">
+                                <option ${e.status==='نشط'?'selected':''}>نشط</option>
+                                <option ${e.status==='إجازة'?'selected':''}>إجازة</option>
+                                <option ${e.status==='موقوف'?'selected':''}>موقوف</option>
+                                <option ${e.status==='منقول'?'selected':''}>منقول</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm mb-1 dark:text-gray-300">الموظف البديل</label>
+                            <select id="ef_backup" class="form-input"><option value="">بدون</option>${empsOpts}</select>
+                        </div>
+                        <div><label class="block text-sm mb-1 dark:text-gray-300">الهاتف</label><input type="text" id="ef_phone" value="${e.phone||''}" class="form-input"></div>
+                        <div><label class="block text-sm mb-1 dark:text-gray-300">تاريخ المباشرة</label><input type="date" id="ef_date" value="${e.joinDate||''}" class="form-input"></div>
+                        <div class="md:col-span-2"><label class="block text-sm mb-1 dark:text-gray-300">ملاحظات</label><textarea id="ef_notes" class="form-input">${e.notes||''}</textarea></div>
+                        <div class="md:col-span-2 flex justify-end gap-2 mt-4">
+                            <button type="button" onclick="closeModal('empModal')" class="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300">إلغاء</button>
+                            <button type="submit" class="px-4 py-2 bg-primary text-white rounded hover:bg-blue-800">حفظ</button>
+                        </div>
+                    </form>
+                </div>
+            `;
+            openModal('empModal', html);
+        }
+
+        function saveEmployee(e, id) {
+            e.preventDefault();
+            const data = {
+                code: document.getElementById('ef_code').value,
+                name: document.getElementById('ef_name').value,
+                title: document.getElementById('ef_title').value,
+                department: document.getElementById('ef_dept').value,
+                status: document.getElementById('ef_status').value,
+                backupId: document.getElementById('ef_backup').value,
+                phone: document.getElementById('ef_phone').value,
+                joinDate: document.getElementById('ef_date').value,
+                notes: document.getElementById('ef_notes').value,
+            };
+
+            if (id !== 'null') {
+                const idx = db.employees.findIndex(x => x.id === id);
+                db.employees[idx] = { ...db.employees[idx], ...data };
+                logAction('تعديل', 'الموظفين', id, `تعديل بيانات الموظف ${data.name}`);
+                showToast('تم تعديل الموظف بنجاح', 'success');
+            } else {
+                const newId = generateId();
+                db.employees.push({ id: newId, isDeleted: false, ...data });
+                logAction('إضافة', 'الموظفين', newId, `إضافة موظف جديد ${data.name}`);
+                showToast('تمت إضافة الموظف بنجاح', 'success');
+            }
+            saveDB();
+            closeModal('empModal');
+            renderEmployees();
+        }
+
+        function deleteEmployee(id) {
+            if(confirm('هل أنت متأكد من حذف الموظف؟ (سيتم الحذف منطقياً)')) {
+                const emp = db.employees.find(x => x.id === id);
+                emp.isDeleted = true;
+                logAction('حذف', 'الموظفين', id, `حذف الموظف ${emp.name}`);
+                saveDB();
+                renderEmployees();
+                showToast('تم حذف الموظف', 'info');
+            }
+        }
+
+        function viewEmployeeDetails(id) {
+            const emp = db.employees.find(e => e.id === id);
+            if (!emp) return;
+
+            const assigns = db.assignments.filter(a => a.employeeId === id && a.status === 'نشط');
+            const reqs = db.requirements.filter(r => r.employeeId === id && ['جديد', 'مسند', 'قيد التنفيذ', 'بانتظار بيانات', 'معاد للتصحيح'].includes(r.status));
+
+            let html = `
+                <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800 rounded-t-lg">
+                    <h3 class="text-lg font-bold dark:text-white"><i class="fas fa-user-circle text-blue-500 ml-2"></i> تفاصيل الموظف: ${emp.name}</h3>
+                    <button onclick="closeModal('empDetailsModal')" class="text-gray-500 hover:text-red-500"><i class="fas fa-times text-xl"></i></button>
+                </div>
+                <div class="p-6 space-y-6">
+                    <!-- Basic Info -->
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                        <div class="bg-gray-50 dark:bg-gray-700 p-3 rounded"><span class="block text-gray-500 dark:text-gray-400">الرقم</span><span class="font-bold dark:text-white">${emp.code}</span></div>
+                        <div class="bg-gray-50 dark:bg-gray-700 p-3 rounded"><span class="block text-gray-500 dark:text-gray-400">القسم</span><span class="font-bold dark:text-white">${emp.department || '-'}</span></div>
+                        <div class="bg-gray-50 dark:bg-gray-700 p-3 rounded"><span class="block text-gray-500 dark:text-gray-400">المسمى</span><span class="font-bold dark:text-white">${emp.title || '-'}</span></div>
+                        <div class="bg-gray-50 dark:bg-gray-700 p-3 rounded"><span class="block text-gray-500 dark:text-gray-400">الحالة</span><span class="font-bold dark:text-white">${emp.status}</span></div>
+                    </div>
+
+                    <!-- Assignments -->
+                    <div>
+                        <h4 class="font-bold text-primary dark:text-blue-400 border-b pb-2 mb-3">العناصر المسندة (${assigns.length})</h4>
+                        <ul class="list-disc list-inside space-y-1 text-sm dark:text-gray-300">
+                            ${assigns.map(a => {
+                                const el = db.elements.find(e => e.id === a.elementId);
+                                const typeName = db.elementTypes.find(t => t.id === el?.typeId)?.name || '';
+                                return "<li>" + (el?.name || 'عنصر غير معروف') + " <span class='text-xs text-gray-500 bg-gray-200 dark:bg-gray-600 px-1 rounded'>" + typeName + "</span></li>";
+                            }).join('') || '<li class="text-gray-500">لا توجد عناصر مسندة</li>'}
+                        </ul>
+                    </div>
+
+                    <!-- Requirements -->
+                    <div>
+                        <h4 class="font-bold text-yellow-600 dark:text-yellow-500 border-b pb-2 mb-3">المتطلبات المفتوحة (${reqs.length})</h4>
+                        <ul class="list-disc list-inside space-y-1 text-sm dark:text-gray-300">
+                            ${reqs.map(r => {
+                                const task = db.tasks.find(t => t.id === r.taskId);
+                                return "<li>" + r.title + " <span class='text-xs text-gray-400'>(مهمة: " + (task?.title || 'غير معروف') + ") - الاستحقاق: " + r.dueDate + "</span></li>";
+                            }).join('') || '<li class="text-gray-500">لا توجد متطلبات مفتوحة</li>'}
+                        </ul>
+                    </div>
+                </div>
+            `;
+            openModal('empDetailsModal', html);
+        }
+
+        // 3. Element Types
+        function renderElementTypes() {
+            const v = document.getElementById('view-elementTypes');
+            v.innerHTML = `
+                <div class="flex justify-between items-center mb-4">
+                    <button onclick="openTypeForm()" class="bg-primary hover:bg-blue-800 text-white px-4 py-2 rounded shadow transition"><i class="fas fa-plus ml-2"></i> إضافة نوع عنصر</button>
+                </div>
+                <div class="bg-white dark:bg-darkcard rounded-lg shadow overflow-x-auto">
+                    <table class="min-w-full text-right">
+                        <thead class="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200">
+                            <tr><th class="px-4 py-3">النوع</th><th class="px-4 py-3">الوصف</th><th class="px-4 py-3">الحقول الإضافية</th><th class="px-4 py-3">إجراءات</th></tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200 dark:divide-gray-700 dark:text-gray-300">
+                            ${db.elementTypes.map(t => `
+                                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                                    <td class="px-4 py-3 font-medium">${t.name}</td>
+                                    <td class="px-4 py-3">${t.description||''}</td>
+                                    <td class="px-4 py-3 text-sm">${t.fields.join(', ')}</td>
+                                    <td class="px-4 py-3">
+                                        <button onclick="openTypeForm('${t.id}')" class="text-blue-500 hover:text-blue-700"><i class="fas fa-edit"></i></button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        function openTypeForm(id = null) {
+            let t = id ? db.elementTypes.find(x => x.id === id) : { fields: [] };
+            let html = `
+                <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center">
+                    <h3 class="text-lg font-bold dark:text-white">${id ? 'تعديل نوع' : 'إضافة نوع'}</h3>
+                    <button onclick="closeModal('typeModal')" class="text-gray-500 hover:text-red-500"><i class="fas fa-times text-xl"></i></button>
+                </div>
+                <div class="p-4">
+                    <form onsubmit="saveType(event, '${id}')" class="space-y-4">
+                        <div><label class="block text-sm mb-1 dark:text-gray-300">اسم النوع</label><input type="text" id="tf_name" value="${t.name||''}" required class="form-input"></div>
+                        <div><label class="block text-sm mb-1 dark:text-gray-300">الوصف</label><input type="text" id="tf_desc" value="${t.description||''}" class="form-input"></div>
+                        <div><label class="block text-sm mb-1 dark:text-gray-300">الحقول الإضافية (مفصولة بفاصلة)</label><input type="text" id="tf_fields" value="${t.fields.join(', ')}" placeholder="مثال: رقم الحساب, الايبان, شروط الدفع" class="form-input"></div>
+                        <div class="flex justify-end gap-2 mt-4">
+                            <button type="submit" class="px-4 py-2 bg-primary text-white rounded hover:bg-blue-800">حفظ</button>
+                        </div>
+                    </form>
+                </div>
+            `;
+            openModal('typeModal', html);
+        }
+
+        function saveType(e, id) {
+            e.preventDefault();
+            const data = {
+                name: document.getElementById('tf_name').value,
+                description: document.getElementById('tf_desc').value,
+                fields: document.getElementById('tf_fields').value.split(',').map(s => s.trim()).filter(s => s)
+            };
+            if (id !== 'null') {
+                const idx = db.elementTypes.findIndex(x => x.id === id);
+                db.elementTypes[idx] = { ...db.elementTypes[idx], ...data };
+            } else {
+                db.elementTypes.push({ id: generateId(), ...data });
+            }
+            saveDB(); closeModal('typeModal'); renderElementTypes();
+        }
+
+        // 4. Elements
+        function renderElements() {
+            const v = document.getElementById('view-elements');
+            let opts = db.elementTypes.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+            v.innerHTML = `
+                <div class="flex flex-wrap justify-between items-center mb-4 gap-2">
+                    <div class="flex gap-2">
+                        <button onclick="openElementForm()" class="bg-primary hover:bg-blue-800 text-white px-4 py-2 rounded shadow transition"><i class="fas fa-plus ml-2"></i> إضافة عنصر عمل</button>
+                        <select id="filter-type" onchange="filterElements()" class="form-input w-48"><option value="">كل الأنواع</option>${opts}</select>
+                    </div>
+                    <input type="text" id="el-search" placeholder="بحث..." class="form-input w-64" onkeyup="filterElements()">
+                </div>
+                <div class="bg-white dark:bg-darkcard rounded-lg shadow overflow-x-auto">
+                    <table class="min-w-full text-right" id="elements-table">
+                        <thead class="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200">
+                            <tr>
+                                <th class="px-4 py-3">الكود</th><th class="px-4 py-3">الاسم</th><th class="px-4 py-3">النوع</th>
+                                <th class="px-4 py-3">الحساب الرئيسي</th><th class="px-4 py-3">الحالة</th><th class="px-4 py-3">إجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="elements-tbody" class="divide-y divide-gray-200 dark:divide-gray-700 dark:text-gray-300">
+                            <!-- Injected by filterElements -->
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            filterElements(); // initial load
+        }
+
+        function filterElements() {
+            const search = document.getElementById('el-search').value.toLowerCase();
+            const typeFilter = document.getElementById('filter-type').value;
+            const tbody = document.getElementById('elements-tbody');
+            
+            let filtered = db.elements.filter(e => {
+                const matchSearch = e.name.toLowerCase().includes(search) || e.code.toLowerCase().includes(search);
+                const matchType = typeFilter ? e.typeId === typeFilter : true;
+                return matchSearch && matchType;
+            });
+
+            tbody.innerHTML = filtered.map(e => {
+                const typeName = db.elementTypes.find(t => t.id === e.typeId)?.name || 'غير محدد';
+                return `
+                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <td class="px-4 py-3">${e.code}</td><td class="px-4 py-3 font-bold text-primary dark:text-blue-400">${e.name}</td>
+                    <td class="px-4 py-3"><span class="px-2 py-1 bg-gray-200 dark:bg-gray-600 rounded text-xs">${typeName}</span></td>
+                    <td class="px-4 py-3">${e.mainAccount||'-'}</td>
+                    <td class="px-4 py-3"><span class="px-2 py-1 text-xs rounded-full ${e.status==='نشط'?'bg-green-100 text-green-800':'bg-red-100 text-red-800'}">${e.status}</span></td>
+                    <td class="px-4 py-3">
+                        <button onclick="openElementForm('${e.id}')" class="text-blue-500 hover:text-blue-700"><i class="fas fa-edit"></i></button>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        function openElementForm(id = null) {
+            let el = id ? db.elements.find(x => x.id === id) : { dynamicData: {} };
+            let typeOpts = db.elementTypes.map(t => `<option value="${t.id}" ${el.typeId===t.id?'selected':''}>${t.name}</option>`).join('');
+            
+            let html = `
+                <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center">
+                    <h3 class="text-lg font-bold dark:text-white">${id ? 'تعديل عنصر' : 'إضافة عنصر'}</h3>
+                    <button onclick="closeModal('elModal')" class="text-gray-500 hover:text-red-500"><i class="fas fa-times text-xl"></i></button>
+                </div>
+                <div class="p-4">
+                    <form onsubmit="saveElement(event, '${id}')" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div><label class="block text-sm mb-1 dark:text-gray-300">نوع العنصر</label><select id="elf_type" class="form-input" onchange="renderDynamicFields(this.value)" required>${typeOpts}</select></div>
+                        <div><label class="block text-sm mb-1 dark:text-gray-300">رقم/كود العنصر</label><input type="text" id="elf_code" value="${el.code||''}" required class="form-input"></div>
+                        <div class="md:col-span-2"><label class="block text-sm mb-1 dark:text-gray-300">الاسم</label><input type="text" id="elf_name" value="${el.name||''}" required class="form-input"></div>
+                        <div><label class="block text-sm mb-1 dark:text-gray-300">رقم الحساب الرئيسي</label><input type="text" id="elf_mainAcc" value="${el.mainAccount||''}" class="form-input"></div>
+                        <div>
+                            <label class="block text-sm mb-1 dark:text-gray-300">الحالة</label>
+                            <select id="elf_status" class="form-input">
+                                <option ${el.status==='نشط'?'selected':''}>نشط</option>
+                                <option ${el.status==='موقوف'?'selected':''}>موقوف</option>
+                            </select>
+                        </div>
+                        <div><label class="block text-sm mb-1 dark:text-gray-300">العملة</label><input type="text" id="elf_currency" value="${el.currency||'SAR'}" class="form-input"></div>
+                        <div><label class="block text-sm mb-1 dark:text-gray-300">الفرع</label><input type="text" id="elf_branch" value="${el.branch||''}" class="form-input"></div>
+                        
+                        <!-- Dynamic Fields Container -->
+                        <div id="dynamic-fields-container" class="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4 dark:border-gray-700"></div>
+
+                        <div class="md:col-span-2"><label class="block text-sm mb-1 dark:text-gray-300">ملاحظات</label><textarea id="elf_notes" class="form-input">${el.notes||''}</textarea></div>
+                        <div class="md:col-span-2 flex justify-end gap-2 mt-4">
+                            <button type="submit" class="px-4 py-2 bg-primary text-white rounded hover:bg-blue-800">حفظ</button>
+                        </div>
+                    </form>
+                </div>
+            `;
+            openModal('elModal', html);
+            
+            // Initial render of dynamic fields
+            setTimeout(() => {
+                const selectEl = document.getElementById('elf_type');
+                if(selectEl && selectEl.value) {
+                    renderDynamicFields(selectEl.value, el.dynamicData);
+                }
+            }, 50);
+        }
+
+        function renderDynamicFields(typeId, existingData = {}) {
+            const container = document.getElementById('dynamic-fields-container');
+            const type = db.elementTypes.find(t => t.id === typeId);
+            if(!type || !type.fields || type.fields.length === 0) {
+                container.innerHTML = ''; return;
+            }
+            container.innerHTML = type.fields.map(f => `
+                <div><label class="block text-sm mb-1 text-indigo-600 dark:text-indigo-400 font-medium">${f}</label>
+                <input type="text" class="form-input dynamic-input" data-key="${f}" value="${existingData[f]||''}"></div>
+            `).join('');
+        }
+
+        function saveElement(e, id) {
+            e.preventDefault();
+            let dynamicData = {};
+            document.querySelectorAll('.dynamic-input').forEach(inp => {
+                dynamicData[inp.getAttribute('data-key')] = inp.value;
+            });
+
+            const data = {
+                typeId: document.getElementById('elf_type').value,
+                code: document.getElementById('elf_code').value,
+                name: document.getElementById('elf_name').value,
+                mainAccount: document.getElementById('elf_mainAcc').value,
+                status: document.getElementById('elf_status').value,
+                currency: document.getElementById('elf_currency').value,
+                branch: document.getElementById('elf_branch').value,
+                notes: document.getElementById('elf_notes').value,
+                dynamicData: dynamicData
+            };
+
+            if (id !== 'null') {
+                const idx = db.elements.findIndex(x => x.id === id);
+                db.elements[idx] = { ...db.elements[idx], ...data };
+                logAction('تعديل', 'عناصر العمل', id, `تعديل عنصر ${data.name}`);
+            } else {
+                const newId = generateId();
+                db.elements.push({ id: newId, ...data });
+                logAction('إضافة', 'عناصر العمل', newId, `إضافة عنصر ${data.name}`);
+            }
+            saveDB(); closeModal('elModal'); renderElements();
+        }
+
+        // 5. Assignments (Many to Many)
+        function renderAssignments() {
+            const v = document.getElementById('view-assignments');
+            v.innerHTML = `
+                <div class="flex justify-between items-center mb-4">
+                    <button onclick="openAssignForm()" class="bg-indigo-600 hover:bg-indigo-800 text-white px-4 py-2 rounded shadow transition"><i class="fas fa-link ml-2"></i> إسناد جديد</button>
+                </div>
+                <div class="bg-white dark:bg-darkcard rounded-lg shadow overflow-x-auto p-4">
+                    <h3 class="font-bold mb-4 border-b pb-2 dark:text-white">الإسنادات النشطة الحالية</h3>
+                    <table class="min-w-full text-right text-sm">
+                        <thead class="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200">
+                            <tr><th class="px-3 py-2">الموظف</th><th class="px-3 py-2">العنصر</th><th class="px-3 py-2">البداية</th><th class="px-3 py-2">النوع</th><th class="px-3 py-2">إجراء</th></tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200 dark:divide-gray-700 dark:text-gray-300">
+                            ${db.assignments.filter(a => a.status === 'نشط').map(a => {
+                                const emp = db.employees.find(e => e.id === a.employeeId)?.name || 'مجهول';
+                                const el = db.elements.find(e => e.id === a.elementId)?.name || 'مجهول';
+                                return `
+                                <tr>
+                                    <td class="px-3 py-2 font-bold">${emp}</td><td class="px-3 py-2">${el}</td>
+                                    <td class="px-3 py-2">${a.startDate}</td><td class="px-3 py-2">${a.isPermanent?'دائم':'مؤقت'}</td>
+                                    <td class="px-3 py-2"><button onclick="closeAssignment('${a.id}')" class="text-red-500 hover:text-red-700 text-xs bg-red-50 dark:bg-red-900 px-2 py-1 rounded">إنهاء الإسناد</button></td>
+                                </tr>`;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        function openAssignForm() {
+            let empsOpts = db.employees.filter(e => !e.isDeleted).map(e => `<option value="${e.id}">${e.name}</option>`).join('');
+            let elsOpts = db.elements.filter(e => e.status === 'نشط').map(e => `<option value="${e.id}">${e.name} (${db.elementTypes.find(t=>t.id===e.typeId)?.name})</option>`).join('');
+            
+            let html = `
+                <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center">
+                    <h3 class="text-lg font-bold dark:text-white">إسناد عناصر لموظف</h3>
+                    <button onclick="closeModal('assignModal')" class="text-gray-500 hover:text-red-500"><i class="fas fa-times text-xl"></i></button>
+                </div>
+                <div class="p-4">
+                    <form onsubmit="saveAssignment(event)" class="space-y-4">
+                        <div><label class="block text-sm mb-1 dark:text-gray-300">الموظف المستلم</label><select id="asf_emp" class="form-input" required><option value="">اختر موظف...</option>${empsOpts}</select></div>
+                        <div>
+                            <label class="block text-sm mb-1 dark:text-gray-300">العناصر (يمكن اختيار أكثر من عنصر - اضغط Ctrl/Cmd)</label>
+                            <select id="asf_els" class="form-input h-32" multiple required>${elsOpts}</select>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div><label class="block text-sm mb-1 dark:text-gray-300">تاريخ البداية</label><input type="date" id="asf_start" required class="form-input" value="${new Date().toISOString().split('T')[0]}"></div>
+                            <div><label class="block text-sm mb-1 dark:text-gray-300">نوع الإسناد</label><select id="asf_type" class="form-input"><option value="true">دائم</option><option value="false">مؤقت</option></select></div>
+                        </div>
+                        <div><label class="block text-sm mb-1 dark:text-gray-300">السبب / ملاحظات</label><input type="text" id="asf_reason" class="form-input"></div>
+                        <div class="flex justify-end gap-2 mt-4">
+                            <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-800">حفظ الإسناد</button>
+                        </div>
+                    </form>
+                </div>
+            `;
+            openModal('assignModal', html);
+        }
+
+        function saveAssignment(e) {
+            e.preventDefault();
+            const empId = document.getElementById('asf_emp').value;
+            const selectEls = document.getElementById('asf_els');
+            const selectedElementIds = Array.from(selectEls.selectedOptions).map(opt => opt.value);
+            const start = document.getElementById('asf_start').value;
+            const isPerm = document.getElementById('asf_type').value === 'true';
+            const reason = document.getElementById('asf_reason').value;
+
+            selectedElementIds.forEach(elId => {
+                // Check if already assigned actively
+                const existing = db.assignments.find(a => a.elementId === elId && a.status === 'نشط');
+                if(existing) { existing.status = 'مغلق'; existing.endDate = start; } // Close old
+                
+                const newAssign = {
+                    id: generateId(), elementId: elId, employeeId: empId, startDate: start,
+                    endDate: null, isPermanent: isPerm, reason: reason, status: 'نشط', assignedBy: 'النظام'
+                };
+                db.assignments.push(newAssign);
+                logAction('إسناد', 'إسناد العناصر', newAssign.id, `إسناد العنصر للموظف`);
+            });
+
+            saveDB(); showToast('تم الإسناد بنجاح', 'success'); closeModal('assignModal'); renderAssignments();
+        }
+
+        function closeAssignment(id) {
+            if(confirm('هل أنت متأكد من إنهاء هذا الإسناد؟')) {
+                const a = db.assignments.find(x => x.id === id);
+                a.status = 'مغلق';
+                a.endDate = new Date().toISOString().split('T')[0];
+                logAction('إنهاء إسناد', 'إسناد العناصر', id, `إنهاء إسناد العنصر`);
+                saveDB(); renderAssignments();
+            }
+        }
+
+        // 6. Tasks
+        let currentTaskSort = { col: 'id', dir: 'asc' };
+
+        function renderTasks() {
+            const v = document.getElementById('view-tasks');
+            v.innerHTML = `
+                <div class="flex justify-between items-center mb-4">
+                    <button onclick="openTaskForm()" class="bg-green-600 hover:bg-green-800 text-white px-4 py-2 rounded shadow transition"><i class="fas fa-plus ml-2"></i> مهمة جديدة</button>
+                </div>
+                <div class="bg-white dark:bg-darkcard rounded-lg shadow overflow-x-auto min-h-[400px]">
+                    <table class="min-w-full text-right" id="tasks-table">
+                        <thead class="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200">
+                            <tr>
+                                <th class="px-4 py-2 align-top w-24">
+                                    <div class="cursor-pointer flex justify-between items-center" onclick="sortTasks('id')"><span>رقم</span> <i class="fas fa-sort text-gray-400"></i></div>
+                                    <input type="text" id="ft_id" class="header-input" placeholder="بحث..." onkeyup="filterTaskTable()">
+                                </th>
+                                <th class="px-4 py-2 align-top">
+                                    <div class="cursor-pointer flex justify-between items-center" onclick="sortTasks('title')"><span>العنوان</span> <i class="fas fa-sort text-gray-400"></i></div>
+                                    <input type="text" id="ft_title" class="header-input" placeholder="بحث..." onkeyup="filterTaskTable()">
+                                </th>
+                                <th class="px-4 py-2 align-top w-32">
+                                    <div class="cursor-pointer flex justify-between items-center" onclick="sortTasks('dueDate')"><span>الاستحقاق</span> <i class="fas fa-sort text-gray-400"></i></div>
+                                    <input type="date" id="ft_date" class="header-input" onchange="filterTaskTable()">
+                                </th>
+                                <th class="px-4 py-2 align-top w-36">
+                                    <div class="cursor-pointer flex justify-between items-center" onclick="sortTasks('status')"><span>الحالة</span> <i class="fas fa-sort text-gray-400"></i></div>
+                                    <select id="ft_status" class="header-input" onchange="filterTaskTable()">
+                                        <option value="">الكل</option>
+                                        <option>جديدة</option><option>قيد التنفيذ</option><option>بانتظار متطلبات</option><option>مكتملة فنيًا</option><option>مقفلة</option><option>موقوفة</option><option>ملغاة</option>
+                                    </select>
+                                </th>
+                                <th class="px-4 py-2 align-top w-32 pt-3">نسبة الإنجاز</th>
+                                <th class="px-4 py-2 align-top w-48 pt-3">إجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tasks-tbody" class="divide-y divide-gray-200 dark:divide-gray-700 dark:text-gray-300">
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            filterTaskTable();
+        }
+
+        function sortTasks(col) {
+            if (currentTaskSort.col === col) {
+                currentTaskSort.dir = currentTaskSort.dir === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentTaskSort.col = col;
+                currentTaskSort.dir = 'asc';
+            }
+            filterTaskTable();
+        }
+
+        function filterTaskTable() {
+            const tbody = document.getElementById('tasks-tbody');
+            if (!tbody) return;
+
+            const fId = document.getElementById('ft_id').value.toLowerCase();
+            const fTitle = document.getElementById('ft_title').value.toLowerCase();
+            const fDate = document.getElementById('ft_date').value;
+            const fStatus = document.getElementById('ft_status').value;
+
+            let filtered = db.tasks.filter(t => {
+                return t.id.toLowerCase().includes(fId) &&
+                       t.title.toLowerCase().includes(fTitle) &&
+                       (fDate === '' || t.dueDate === fDate) &&
+                       (fStatus === '' || t.status === fStatus);
+            });
+
+            filtered.sort((a, b) => {
+                let valA = a[currentTaskSort.col] || '';
+                let valB = b[currentTaskSort.col] || '';
+                if (currentTaskSort.col === 'id') { valA = valA.substr(-5); valB = valB.substr(-5); }
+                if (valA < valB) return currentTaskSort.dir === 'asc' ? -1 : 1;
+                if (valA > valB) return currentTaskSort.dir === 'asc' ? 1 : -1;
+                return 0;
+            });
+
+            tbody.innerHTML = filtered.map(t => {
+                const reqs = db.requirements.filter(r => r.taskId === t.id);
+                const total = reqs.length;
+                const completed = reqs.filter(r => r.status === 'مكتمل').length;
+                const progress = total === 0 ? 0 : Math.round((completed / total) * 100);
+                let statusClass = 'bg-gray-100 text-gray-800';
+                if(t.status === 'مكتملة فنيًا' || t.status === 'مقفلة') statusClass = 'bg-green-100 text-green-800';
+                if(t.status === 'بانتظار متطلبات') statusClass = 'bg-yellow-100 text-yellow-800';
+                
+                return `
+                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer" onmouseenter="setupTaskTooltip('${t.id}')" onmousemove="moveTaskTooltip(event)" onmouseleave="hideTaskTooltip()">
+                    <td class="px-4 py-3">${t.id.substr(-5)}</td>
+                    <td class="px-4 py-3 font-bold">${t.title}</td>
+                    <td class="px-4 py-3 ${new Date(t.dueDate) < new Date() && t.status !== 'مقفلة' ? 'text-red-500 font-bold' : ''}">${t.dueDate}</td>
+                    <td class="px-4 py-3"><span class="px-2 py-1 text-xs rounded-full ${statusClass}">${t.status}</span></td>
+                    <td class="px-4 py-3">
+                        <div class="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mt-1">
+                            <div class="bg-blue-600 h-2.5 rounded-full" style="width: ${progress}%"></div>
+                        </div>
+                        <span class="text-xs">${progress}%</span>
+                    </td>
+                    <td class="px-4 py-3 flex gap-2 relative z-10" onmouseenter="hideTaskTooltip() /* Prevent tooltip over buttons */">
+                        <button onclick="viewTaskDetails('${t.id}')" class="text-blue-500 hover:text-blue-700 text-sm bg-blue-50 dark:bg-blue-900 px-2 py-1 rounded">إدارة المهام</button>
+                        <button onclick="openTaskForm('${t.id}')" class="text-gray-500 hover:text-gray-700" title="تعديل"><i class="fas fa-edit"></i></button>
+                        <button onclick="viewEntityHistory('${t.id}', '${t.title.replace(/'/g, "\\'")}')" class="text-purple-500 hover:text-purple-700" title="سجل حركة المهمة"><i class="fas fa-history"></i></button>
+                        <button onclick="deleteTask('${t.id}')" class="text-red-500 hover:text-red-700" title="حذف المهمة ومتطلباتها"><i class="fas fa-trash"></i></button>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        function deleteTask(id) {
+            if (confirm('هل أنت متأكد من حذف هذه المهمة؟ سيتم حذف جميع المتطلبات المرتبطة بها نهائياً.')) {
+                const task = db.tasks.find(t => t.id === id);
+                if(!task) return;
+                
+                // Remove requirements
+                const reqCount = db.requirements.filter(r => r.taskId === id).length;
+                db.requirements = db.requirements.filter(r => r.taskId !== id);
+                
+                // Remove task
+                db.tasks = db.tasks.filter(t => t.id !== id);
+                
+                logAction('حذف', 'المهام', id, `حذف المهمة ${task.title} مع ${reqCount} متطلب`);
+                saveDB();
+                showToast('تم حذف المهمة ومتطلباتها بنجاح', 'success');
+                filterTaskTable();
+            }
+        }
+
+        function openTaskForm(id = null) {
+            let t = id ? db.tasks.find(x => x.id === id) : { status: 'جديدة', priority: 'عادية' };
+            const statusOpts = ['جديدة','قيد التنفيذ','بانتظار متطلبات','مكتملة فنيًا','مقفلة','موقوفة','ملغاة'];
+            const priOpts = ['عالية جداً','عالية','عادية','منخفضة'];
+            
+            let html = `
+                <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center">
+                    <h3 class="text-lg font-bold dark:text-white">${id ? 'تعديل مهمة' : 'إنشاء مهمة رئيسية'}</h3>
+                    <button onclick="closeModal('taskModal')" class="text-gray-500 hover:text-red-500"><i class="fas fa-times text-xl"></i></button>
+                </div>
+                <div class="p-4">
+                    <form onsubmit="saveTask(event, '${id}')" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="md:col-span-2"><label class="block text-sm mb-1 dark:text-gray-300">عنوان المهمة</label><input type="text" id="tk_title" value="${t.title||''}" required class="form-input"></div>
+                        <div><label class="block text-sm mb-1 dark:text-gray-300">التصنيف</label><input type="text" id="tk_cat" value="${t.category||''}" class="form-input"></div>
+                        <div>
+                            <label class="block text-sm mb-1 dark:text-gray-300">الأولوية</label>
+                            <select id="tk_pri" class="form-input">${priOpts.map(p => `<option ${t.priority===p?'selected':''}>${p}</option>`).join('')}</select>
+                        </div>
+                        <div><label class="block text-sm mb-1 dark:text-gray-300">تاريخ الاستحقاق</label><input type="date" id="tk_due" value="${t.dueDate||''}" required class="form-input"></div>
+                        <div>
+                            <label class="block text-sm mb-1 dark:text-gray-300">الحالة (مستقلة عن المتطلبات)</label>
+                            <select id="tk_status" class="form-input">${statusOpts.map(s => `<option ${t.status===s?'selected':''}>${s}</option>`).join('')}</select>
+                        </div>
+                        <div class="md:col-span-2"><label class="block text-sm mb-1 dark:text-gray-300">الوصف</label><textarea id="tk_desc" class="form-input h-24">${t.description||''}</textarea></div>
+                        <div class="md:col-span-2 flex justify-end gap-2 mt-4">
+                            <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-800">حفظ المهمة</button>
+                        </div>
+                    </form>
+                </div>
+            `;
+            openModal('taskModal', html);
+        }
+
+        function saveTask(e, id) {
+            e.preventDefault();
+            const data = {
+                title: document.getElementById('tk_title').value, category: document.getElementById('tk_cat').value,
+                priority: document.getElementById('tk_pri').value, dueDate: document.getElementById('tk_due').value,
+                status: document.getElementById('tk_status').value, description: document.getElementById('tk_desc').value,
+            };
+
+            if(id !== 'null') {
+                const idx = db.tasks.findIndex(x => x.id === id);
+                const oldStatus = db.tasks[idx].status;
+
+                // تم إزالة القيد الذي يمنع إقفال المهمة، لتبقى حالة المهمة مستقلة عن المتطلبات حسب طلبك.
+                
+                db.tasks[idx] = { ...db.tasks[idx], ...data };
+                
+                let desc = `تعديل تفاصيل المهمة`;
+                if(oldStatus !== data.status) desc += ` - وتغيير الحالة من "${oldStatus}" إلى "${data.status}"`;
+                logAction('تعديل', 'المهام', id, desc);
+            } else {
+                const newId = generateId();
+                db.tasks.push({ id: newId, openDate: new Date().toISOString().split('T')[0], ownerId: 'النظام', ...data });
+                logAction('إنشاء', 'المهام', newId, `إنشاء مهمة جديدة`);
+            }
+            saveDB(); closeModal('taskModal'); renderTasks();
+        }
+
+        function viewTaskDetails(taskId) {
+            nav('requirements'); // Switch to requirements view
+            setTimeout(() => {
+                const taskFilter = document.getElementById('fr_task');
+                if (taskFilter) {
+                    taskFilter.value = taskId;
+                    filterRequirements();
+                }
+            }, 100);
+        }
+
+        // 7. Requirements
+        let currentReqSort = { col: 'title', dir: 'asc' };
+
+        function renderRequirements() {
+            const v = document.getElementById('view-requirements');
+            let tasksOpts = db.tasks.map(t => `<option value="${t.id}">${t.title}</option>`).join('');
+            let empOpts = db.employees.filter(e => !e.isDeleted).map(e => `<option value="${e.id}">${e.name}</option>`).join('');
+
+            v.innerHTML = `
+                <div class="flex flex-wrap justify-between items-center mb-4 gap-2">
+                    <button onclick="openReqForm()" class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded shadow transition"><i class="fas fa-plus ml-2"></i> متطلب جديد</button>
+                </div>
+                <div class="bg-white dark:bg-darkcard rounded-lg shadow overflow-x-auto min-h-[400px]">
+                    <table class="min-w-full text-right text-sm">
+                        <thead class="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200">
+                            <tr>
+                                <th class="px-3 py-2 align-top w-40">
+                                    <div class="cursor-pointer flex justify-between items-center" onclick="sortReqs('taskId')"><span>المهمة الأم</span> <i class="fas fa-sort text-gray-400"></i></div>
+                                    <select id="fr_task" onchange="filterRequirements()" class="header-input"><option value="">الكل</option>${tasksOpts}</select>
+                                </th>
+                                <th class="px-3 py-2 align-top">
+                                    <div class="cursor-pointer flex justify-between items-center" onclick="sortReqs('title')"><span>المتطلب</span> <i class="fas fa-sort text-gray-400"></i></div>
+                                    <input type="text" id="fr_title" onkeyup="filterRequirements()" class="header-input" placeholder="بحث...">
+                                </th>
+                                <th class="px-3 py-2 align-top w-32">
+                                    <div class="cursor-pointer flex justify-between items-center" onclick="sortReqs('employeeId')"><span>المسؤول</span> <i class="fas fa-sort text-gray-400"></i></div>
+                                    <select id="fr_emp" onchange="filterRequirements()" class="header-input"><option value="">الكل</option>${empOpts}</select>
+                                </th>
+                                <th class="px-3 py-2 align-top pt-3 w-16">إلزامي؟</th>
+                                <th class="px-3 py-2 align-top w-32">
+                                    <div class="cursor-pointer flex justify-between items-center" onclick="sortReqs('dueDate')"><span>الاستحقاق</span> <i class="fas fa-sort text-gray-400"></i></div>
+                                    <input type="date" id="fr_date" onchange="filterRequirements()" class="header-input">
+                                </th>
+                                <th class="px-3 py-2 align-top w-36">
+                                    <div class="cursor-pointer flex justify-between items-center" onclick="sortReqs('status')"><span>الحالة</span> <i class="fas fa-sort text-gray-400"></i></div>
+                                    <select id="fr_status" onchange="filterRequirements()" class="header-input">
+                                        <option value="">الكل</option>
+                                        <option>جديد</option><option>مسند</option><option>قيد التنفيذ</option><option>بانتظار بيانات</option><option>مكتمل</option><option>مرفوض</option><option>معاد للتصحيح</option><option>ملغى</option>
+                                    </select>
+                                </th>
+                                <th class="px-3 py-2 align-top pt-3 w-36">إجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="req-tbody" class="divide-y divide-gray-200 dark:divide-gray-700 dark:text-gray-300"></tbody>
+                    </table>
+                </div>
+            `;
+            filterRequirements();
+        }
+
+        function sortReqs(col) {
+            if (currentReqSort.col === col) {
+                currentReqSort.dir = currentReqSort.dir === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentReqSort.col = col;
+                currentReqSort.dir = 'asc';
+            }
+            filterRequirements();
+        }
+
+        function filterRequirements() {
+            const tbody = document.getElementById('req-tbody');
+            if (!tbody) return;
+
+            const fTask = document.getElementById('fr_task').value;
+            const fTitle = document.getElementById('fr_title').value.toLowerCase();
+            const fEmp = document.getElementById('fr_emp').value;
+            const fDate = document.getElementById('fr_date').value;
+            const fStatus = document.getElementById('fr_status').value;
+
+            let filtered = db.requirements.filter(r => {
+                return (fTask === '' || r.taskId === fTask) &&
+                       r.title.toLowerCase().includes(fTitle) &&
+                       (fEmp === '' || r.employeeId === fEmp) &&
+                       (fDate === '' || r.dueDate === fDate) &&
+                       (fStatus === '' || r.status === fStatus);
+            });
+
+            filtered.sort((a, b) => {
+                let valA = a[currentReqSort.col] || '';
+                let valB = b[currentReqSort.col] || '';
+                if (valA < valB) return currentReqSort.dir === 'asc' ? -1 : 1;
+                if (valA > valB) return currentReqSort.dir === 'asc' ? 1 : -1;
+                return 0;
+            });
+
+            tbody.innerHTML = filtered.map(r => {
+                const task = db.tasks.find(t => t.id === r.taskId)?.title || 'مجهول';
+                const emp = db.employees.find(e => e.id === r.employeeId)?.name || 'غير مسند';
+                let statusClass = 'bg-gray-100 text-gray-800';
+                if(r.status === 'مكتمل') statusClass = 'bg-green-100 text-green-800';
+                if(r.status === 'بانتظار بيانات') statusClass = 'bg-yellow-100 text-yellow-800';
+                if(r.status === 'معاد للتصحيح') statusClass = 'bg-orange-100 text-orange-800';
+                if(r.status === 'مرفوض') statusClass = 'bg-red-100 text-red-800';
+
+                return `
+                <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 border-l-4 ${r.isMandatory?'border-red-400':'border-transparent'}">
+                    <td class="px-3 py-2 text-xs text-gray-500" title="${task}">${task.length > 20 ? task.substring(0,20) + '..' : task}</td>
+                    <td class="px-3 py-2 font-bold">${r.title}</td>
+                    <td class="px-3 py-2 text-indigo-600 dark:text-indigo-400">${emp}</td>
+                    <td class="px-3 py-2">${r.isMandatory?'<i class="fas fa-check text-red-500"></i>':'-'}</td>
+                    <td class="px-3 py-2 ${new Date(r.dueDate) < new Date() && r.status !== 'مكتمل' ? 'text-red-500 font-bold' : ''}">${r.dueDate}</td>
+                    <td class="px-3 py-2"><span class="px-2 py-1 text-xs rounded-full ${statusClass}">${r.status}</span></td>
+                    <td class="px-3 py-2 flex items-center gap-2">
+                        <select onchange="updateReqStatus('${r.id}', this.value, this)" class="text-xs border rounded p-1 dark:bg-gray-600 dark:text-white">
+                            <option value="">حالة..</option>
+                            <option value="قيد التنفيذ">تنفيذ</option>
+                            <option value="بانتظار بيانات">بيانات</option>
+                            <option value="معاد للتصحيح">معاد للتصحيح</option>
+                            <option value="مكتمل">مكتمل</option>
+                        </select>
+                        <button onclick="openReqForm('${r.id}')" class="text-blue-500" title="تعديل"><i class="fas fa-edit"></i></button>
+                        <button onclick="viewEntityHistory('${r.id}', '${r.title.replace(/'/g, "\\'")}')" class="text-purple-500 hover:text-purple-700" title="سجل حركة المتطلب"><i class="fas fa-history"></i></button>
+                        <button onclick="deleteReq('${r.id}')" class="text-red-500" title="حذف"><i class="fas fa-trash"></i></button>
+                    </td>
+                </tr>`;
+            }).join('');
+        }
+
+        function deleteReq(id) {
+            if(confirm('هل أنت متأكد من حذف هذا المتطلب نهائياً؟')) {
+                const req = db.requirements.find(r => r.id === id);
+                db.requirements = db.requirements.filter(r => r.id !== id);
+                logAction('حذف', 'المتطلبات', id, `حذف المتطلب ${req.title}`);
+                saveDB();
+                filterRequirements();
+                showToast('تم حذف المتطلب بنجاح', 'success');
+            }
+        }
+
+        // تم التعديل لتشمل نافذة لكتابة سبب/ملاحظة عند تغيير الحالة
+        function updateReqStatus(id, newStatus, selectElement) {
+            if(!newStatus) return;
+            const req = db.requirements.find(r => r.id === id);
+            
+            if(req.status === newStatus) return;
+
+            let note = prompt(`هل ترغب في إضافة ملاحظة لتغيير الحالة إلى "${newStatus}"؟ (خاصة إذا كان معاد للتصحيح)`, '');
+            
+            if (note === null) {
+                // المستخدم ضغط على إلغاء
+                selectElement.value = ''; // إرجاع القائمة المنسدلة إلى الوضع الطبيعي
+                return;
+            }
+
+            const oldStatus = req.status;
+            req.status = newStatus;
+            
+            let desc = `تغيير الحالة من "${oldStatus}" إلى "${newStatus}"`;
+            if (note.trim() !== '') desc += ` | الملاحظة: ${note.trim()}`;
+            
+            logAction('تحديث حالة', 'المتطلبات', id, desc);
+            saveDB(); 
+            filterRequirements(); 
+            showToast('تم التحديث وحفظ السجل', 'success');
+        }
+
+        function openReqForm(id = null) {
+            let r = id ? db.requirements.find(x => x.id === id) : { isMandatory: true, status: 'جديد' };
+            let tasksOpts = db.tasks.map(t => `<option value="${t.id}" ${r.taskId===t.id?'selected':''}>${t.title}</option>`).join('');
+            let empsOpts = db.employees.filter(e => !e.isDeleted).map(e => `<option value="${e.id}" ${r.employeeId===e.id?'selected':''}>${e.name}</option>`).join('');
+            
+            let html = `
+                <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center">
+                    <h3 class="text-lg font-bold dark:text-white">${id ? 'تعديل متطلب' : 'إضافة متطلب لمهمة'}</h3>
+                    <button onclick="closeModal('reqModal')" class="text-gray-500 hover:text-red-500"><i class="fas fa-times text-xl"></i></button>
+                </div>
+                <div class="p-4">
+                    <form onsubmit="saveReq(event, '${id}')" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="md:col-span-2"><label class="block text-sm mb-1 dark:text-gray-300">المهمة الأم</label><select id="rq_task" required class="form-input">${tasksOpts}</select></div>
+                        <div class="md:col-span-2"><label class="block text-sm mb-1 dark:text-gray-300">عنوان المتطلب</label><input type="text" id="rq_title" value="${r.title||''}" required class="form-input"></div>
+                        <div><label class="block text-sm mb-1 dark:text-gray-300">الموظف المسؤول</label><select id="rq_emp" required class="form-input"><option value="">اختر...</option>${empsOpts}</select></div>
+                        <div><label class="block text-sm mb-1 dark:text-gray-300">تاريخ الاستحقاق</label><input type="date" id="rq_due" value="${r.dueDate||''}" required class="form-input"></div>
+                        <div>
+                            <label class="block text-sm mb-1 dark:text-gray-300">طبيعة المتطلب</label>
+                            <select id="rq_mand" class="form-input"><option value="true" ${r.isMandatory?'selected':''}>إلزامي لإقفال المهمة</option><option value="false" ${!r.isMandatory?'selected':''}>اختياري</option></select>
+                        </div>
+                        <div class="md:col-span-2"><label class="block text-sm mb-1 dark:text-gray-300">الوصف</label><textarea id="rq_desc" class="form-input">${r.description||''}</textarea></div>
+                        <div class="md:col-span-2 flex justify-end gap-2 mt-4">
+                            <button type="submit" class="px-4 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-800">حفظ</button>
+                        </div>
+                    </form>
+                </div>
+            `;
+            openModal('reqModal', html);
+        }
+
+        function saveReq(e, id) {
+            e.preventDefault();
+            const data = {
+                taskId: document.getElementById('rq_task').value,
+                title: document.getElementById('rq_title').value,
+                employeeId: document.getElementById('rq_emp').value,
+                dueDate: document.getElementById('rq_due').value,
+                isMandatory: document.getElementById('rq_mand').value === 'true',
+                description: document.getElementById('rq_desc').value
+            };
+
+            if(id !== 'null') {
+                const idx = db.requirements.findIndex(x => x.id === id);
+                db.requirements[idx] = { ...db.requirements[idx], ...data };
+                logAction('تعديل', 'المتطلبات', id, `تعديل تفاصيل المتطلب`);
+            } else {
+                const newId = generateId();
+                db.requirements.push({ id: newId, status: 'مسند', ...data });
+                logAction('إنشاء', 'المتطلبات', newId, `إنشاء وإسناد متطلب جديد`);
+            }
+            saveDB(); closeModal('reqModal'); filterRequirements();
+        }
+
+        // 8. Handovers
+        function renderHandovers() {
+            const v = document.getElementById('view-handovers');
+            v.innerHTML = `
+                <div class="flex justify-between items-center mb-4">
+                    <button onclick="openHandoverForm()" class="bg-purple-600 hover:bg-purple-800 text-white px-4 py-2 rounded shadow transition"><i class="fas fa-exchange-alt ml-2"></i> إنشاء محضر تسليم واستلام</button>
+                </div>
+                <div class="bg-white dark:bg-darkcard rounded-lg shadow overflow-x-auto p-4">
+                    <table class="min-w-full text-right text-sm">
+                        <thead class="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200">
+                            <tr><th class="px-3 py-2">رقم المحضر</th><th class="px-3 py-2">المسلم</th><th class="px-3 py-2">المستلم</th><th class="px-3 py-2">تاريخ</th><th class="px-3 py-2">النوع</th><th class="px-3 py-2">إجراء</th></tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200 dark:divide-gray-700 dark:text-gray-300">
+                            ${db.handovers.map(h => `
+                                <tr>
+                                    <td class="px-3 py-2">${h.id.substr(-5)}</td>
+                                    <td class="px-3 py-2 text-red-600 font-bold">${db.employees.find(e=>e.id===h.fromEmpId)?.name}</td>
+                                    <td class="px-3 py-2 text-green-600 font-bold">${db.employees.find(e=>e.id===h.toEmpId)?.name}</td>
+                                    <td class="px-3 py-2">${h.startDate}</td>
+                                    <td class="px-3 py-2">${h.type}</td>
+                                    <td class="px-3 py-2">
+                                        <button onclick="printReport('handover', '${h.id}')" class="text-gray-500 hover:text-black"><i class="fas fa-print"></i> طباعة</button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        function openHandoverForm() {
+            let empsOpts = db.employees.filter(e => !e.isDeleted).map(e => `<option value="${e.id}">${e.name}</option>`).join('');
+            let html = `
+                <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center">
+                    <h3 class="text-lg font-bold dark:text-white">محضر تسليم واستلام جديد</h3>
+                    <button onclick="closeModal('hoModal')" class="text-gray-500 hover:text-red-500"><i class="fas fa-times text-xl"></i></button>
+                </div>
+                <div class="p-4">
+                    <form onsubmit="saveHandover(event)" class="space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div><label class="block text-sm mb-1 text-red-500 font-bold">الموظف المسلّم</label><select id="ho_from" required class="form-input bg-red-50"><option value="">اختر...</option>${empsOpts}</select></div>
+                            <div><label class="block text-sm mb-1 text-green-500 font-bold">الموظف المستلّم</label><select id="ho_to" required class="form-input bg-green-50"><option value="">اختر...</option>${empsOpts}</select></div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div><label class="block text-sm mb-1 dark:text-gray-300">تاريخ التسليم</label><input type="date" id="ho_date" required class="form-input" value="${new Date().toISOString().split('T')[0]}"></div>
+                            <div><label class="block text-sm mb-1 dark:text-gray-300">النوع</label><select id="ho_type" class="form-input"><option>مؤقت (إجازة)</option><option>دائم (نقل/استقالة)</option></select></div>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-500 mb-2">ملاحظة: سيتم نقل جميع العناصر النشطة والمتطلبات المفتوحة تلقائياً للمستلم وتوثيقها.</p>
+                            <label class="block text-sm mb-1 dark:text-gray-300">ملاحظات المحضر</label><textarea id="ho_notes" class="form-input"></textarea>
+                        </div>
+                        <div class="flex justify-end gap-2 mt-4">
+                            <button type="submit" class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-800">تنفيذ واعتـمـاد</button>
+                        </div>
+                    </form>
+                </div>
+            `;
+            openModal('hoModal', html);
+        }
+
+        function saveHandover(e) {
+            e.preventDefault();
+            const fromId = document.getElementById('ho_from').value;
+            const toId = document.getElementById('ho_to').value;
+            if(fromId === toId) { showToast('لا يمكن التسليم لنفس الموظف', 'error'); return; }
+
+            const date = document.getElementById('ho_date').value;
+            const type = document.getElementById('ho_type').value;
+
+            // 1. Get active assignments for 'fromId'
+            const activeAssigns = db.assignments.filter(a => a.employeeId === fromId && a.status === 'نشط');
+            const elementsTransferred = [];
+            
+            activeAssigns.forEach(a => {
+                a.status = 'مغلق'; a.endDate = date; // close old
+                db.assignments.push({
+                    id: generateId(), elementId: a.elementId, employeeId: toId,
+                    startDate: date, endDate: null, isPermanent: type.includes('دائم'),
+                    reason: `تسليم واستلام من ${db.employees.find(e=>e.id===fromId).name}`, status: 'نشط'
+                });
+                elementsTransferred.push(a.elementId);
+            });
+
+            // 2. Get open requirements for 'fromId'
+            const openReqs = db.requirements.filter(r => r.employeeId === fromId && ['جديد','مسند','قيد التنفيذ','بانتظار بيانات','معاد للتصحيح'].includes(r.status));
+            const reqsTransferred = [];
+
+            openReqs.forEach(r => {
+                r.employeeId = toId; // update assignee
+                reqsTransferred.push(r.id);
+            });
+
+            const hoId = generateId();
+            db.handovers.push({
+                id: hoId, fromEmpId: fromId, toEmpId: toId, startDate: date, type: type,
+                status: 'مغلق', elementsTransferred, requirementsTransferred,
+                notes: document.getElementById('ho_notes').value
+            });
+
+            logAction('تسليم واستلام', 'التسليم', hoId, `نقل ${elementsTransferred.length} عنصر و ${reqsTransferred.length} متطلب`);
+            saveDB(); closeModal('hoModal'); renderHandovers(); showToast('تم الاعتماد والنقل بنجاح', 'success');
+        }
+
+        // 9. Audit Log
+        function renderAudit() {
+            const v = document.getElementById('view-audit');
+            v.innerHTML = `
+                <div class="bg-white dark:bg-darkcard rounded-lg shadow overflow-x-auto p-4">
+                    <table class="min-w-full text-right text-sm">
+                        <thead class="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200">
+                            <tr><th class="px-3 py-2">التاريخ والوقت</th><th class="px-3 py-2">القسم</th><th class="px-3 py-2">الإجراء</th><th class="px-3 py-2">التفاصيل</th><th class="px-3 py-2">المستخدم</th></tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200 dark:divide-gray-700 dark:text-gray-300">
+                            ${db.auditLog.slice(0, 100).map(l => `
+                                <tr>
+                                    <td class="px-3 py-2 text-xs text-gray-500" dir="ltr">${new Date(l.timestamp).toLocaleString('ar-SA')}</td>
+                                    <td class="px-3 py-2">${l.entity}</td>
+                                    <td class="px-3 py-2 font-bold text-indigo-600 dark:text-indigo-400">${l.action}</td>
+                                    <td class="px-3 py-2">${l.desc}</td>
+                                    <td class="px-3 py-2">${l.user}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        // 10. Reports
+        function renderReports() {
+            const v = document.getElementById('view-reports');
+            let empOpts = db.employees.filter(e => !e.isDeleted).map(e => `<option value="${e.id}">${e.name}</option>`).join('');
+            let taskOpts = db.tasks.map(t => `<option value="${t.id}">${t.title}</option>`).join('');
+
+            v.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-white dark:bg-darkcard p-6 rounded-lg shadow">
+                        <h3 class="text-xl font-bold border-b pb-2 mb-4 dark:text-white"><i class="fas fa-user text-blue-500 ml-2"></i> تقرير موظف شامل</h3>
+                        <select id="rep_empId" class="form-input mb-4"><option value="">اختر الموظف...</option>${empOpts}</select>
+                        <button onclick="printReport('employee')" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"><i class="fas fa-print ml-2"></i> عرض وطباعة</button>
+                    </div>
+
+                    <div class="bg-white dark:bg-darkcard p-6 rounded-lg shadow border-2 border-indigo-100 dark:border-indigo-900">
+                        <h3 class="text-xl font-bold border-b pb-2 mb-4 dark:text-white"><i class="fas fa-tasks text-green-500 ml-2"></i> تقرير مهمة تفصيلي</h3>
+                        <select id="rep_taskId" class="form-input mb-4"><option value="">اختر المهمة...</option>${taskOpts}</select>
+                        
+                        <!-- خيارات الطباعة المضافة حديثاً -->
+                        <div class="mb-4 bg-gray-50 dark:bg-gray-700 p-3 rounded space-y-2 text-sm text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-600">
+                            <p class="font-bold mb-2 text-xs text-gray-500">خيارات الطباعة:</p>
+                            <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="rep_task_history" class="w-4 h-4 text-blue-600"> تضمين سجل حركة المهمة (التعديلات والحالات)</label>
+                            <label class="flex items-center gap-2 cursor-pointer"><input type="checkbox" id="rep_req_history" class="w-4 h-4 text-blue-600"> تضمين سجل حركة كل متطلب (مفيد لمتابعة إعادة التصحيح)</label>
+                        </div>
+                        
+                        <button onclick="printReport('task')" class="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 shadow"><i class="fas fa-print ml-2"></i> عرض وطباعة</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function printReport(type, directId = null) {
+            const printArea = document.getElementById('print-area');
+            let html = '';
+
+            if (type === 'employee') {
+                const id = document.getElementById('rep_empId').value;
+                if(!id) return;
+                const emp = db.employees.find(e => e.id === id);
+                const assigns = db.assignments.filter(a => a.employeeId === id && a.status === 'نشط');
+                const reqs = db.requirements.filter(r => r.employeeId === id && r.status !== 'مكتمل');
+                
+                html = `
+                    <div class="print-card">
+                        <h1 style="text-align:center; margin-bottom: 20px;">تقرير الموظف</h1>
+                        <h3>البيانات الأساسية</h3>
+                        <table class="print-table" style="margin-bottom: 20px;">
+                            <tr><th>الاسم</th><td>${emp.name}</td><th>الرقم</th><td>${emp.code}</td></tr>
+                            <tr><th>القسم</th><td>${emp.department}</td><th>المسمى</th><td>${emp.title}</td></tr>
+                        </table>
+                        
+                        <h3>العناصر المسندة حالياً (${assigns.length})</h3>
+                        <table class="print-table" style="margin-bottom: 20px;">
+                            <tr><th>كود العنصر</th><th>الاسم</th><th>النوع</th><th>تاريخ الإسناد</th></tr>
+                            ${assigns.map(a => {
+                                const el = db.elements.find(e => e.id === a.elementId);
+                                const tName = db.elementTypes.find(t=>t.id===el?.typeId)?.name;
+                                return `<tr><td>${el?.code||''}</td><td>${el?.name||''}</td><td>${tName||''}</td><td>${a.startDate}</td></tr>`;
+                            }).join('')}
+                        </table>
+
+                        <h3>المتطلبات المفتوحة (${reqs.length})</h3>
+                        <table class="print-table">
+                            <tr><th>المتطلب</th><th>المهمة الأم</th><th>الاستحقاق</th><th>الحالة</th></tr>
+                            ${reqs.map(r => {
+                                const tName = db.tasks.find(t=>t.id===r.taskId)?.title;
+                                return `<tr><td>${r.title}</td><td>${tName||''}</td><td>${r.dueDate}</td><td>${r.status}</td></tr>`;
+                            }).join('')}
+                        </table>
+                    </div>`;
+            } else if (type === 'task') {
+                const id = document.getElementById('rep_taskId').value;
+                if(!id) return;
+                const task = db.tasks.find(t => t.id === id);
+                const reqs = db.requirements.filter(r => r.taskId === id);
+                
+                const incTaskHist = document.getElementById('rep_task_history').checked;
+                const incReqHist = document.getElementById('rep_req_history').checked;
+                
+                html = `
+                    <div class="print-card">
+                        <h1 style="text-align:center; margin-bottom: 20px; color:#1e3a8a;">تقرير المهمة التفصيلي</h1>
+                        
+                        <div style="background-color:#f8fafc; padding:15px; border:1px solid #cbd5e1; margin-bottom: 20px;">
+                            <table class="print-table" style="margin-bottom: 0;">
+                                <tr><th style="width:150px; background:#e2e8f0;">العنوان</th><td colspan="3" style="font-weight:bold; font-size:16px;">${task.title}</td></tr>
+                                <tr><th style="background:#e2e8f0;">الحالة</th><td>${task.status}</td><th style="background:#e2e8f0;">الاستحقاق</th><td>${task.dueDate}</td></tr>
+                                <tr><th style="background:#e2e8f0;">الوصف</th><td colspan="3">${task.description||'-'}</td></tr>
+                            </table>
+                        </div>`;
+                
+                // إضافة سجل المهمة إذا تم اختياره
+                if(incTaskHist) {
+                    const tLogs = db.auditLog.filter(l => l.entityId === id);
+                    if(tLogs.length > 0) {
+                        html += `
+                        <h3 style="color:#1e3a8a; border-bottom:1px solid #1e3a8a; padding-bottom:5px;">سجل التعديلات والحركة للمهمة</h3>
+                        <table class="print-table" style="margin-bottom: 20px; font-size:12px;">
+                            <tr style="background:#f1f5f9;"><th>التاريخ</th><th>الإجراء</th><th>التفاصيل</th><th>المستخدم</th></tr>
+                            ${tLogs.map(l => `<tr><td dir="ltr">${new Date(l.timestamp).toLocaleString('ar-SA')}</td><td>${l.action}</td><td>${l.desc}</td><td>${l.user}</td></tr>`).join('')}
+                        </table>`;
+                    }
+                }
+
+                html += `
+                        <h3 style="color:#1e3a8a; border-bottom:1px solid #1e3a8a; padding-bottom:5px; margin-top:30px;">المتطلبات المرتبطة (${reqs.length})</h3>
+                        <table class="print-table" style="margin-bottom: 20px;">
+                            <tr style="background:#f1f5f9;"><th>المتطلب</th><th>المسؤول</th><th>إلزامي</th><th>الحالة</th></tr>
+                            ${reqs.map(r => {
+                                const empName = db.employees.find(e=>e.id===r.employeeId)?.name;
+                                return `<tr><td style="font-weight:bold;">${r.title}</td><td>${empName||'-'}</td><td>${r.isMandatory?'نعم':'لا'}</td><td>${r.status}</td></tr>`;
+                            }).join('')}
+                        </table>`;
+
+                // إضافة سجل المتطلبات إذا تم اختياره
+                if(incReqHist && reqs.length > 0) {
+                    html += `<div style="page-break-before: auto;"><h3 style="color:#b45309; border-bottom:1px solid #b45309; padding-bottom:5px; margin-top:30px;">سجل الحركة للمتطلبات (التتبع والتصحيحات)</h3>`;
+                    reqs.forEach(r => {
+                        const rLogs = db.auditLog.filter(l => l.entityId === r.id);
+                        if(rLogs.length > 0) {
+                            html += `
+                            <h4 style="margin-bottom: 5px; color:#475569; background:#f8fafc; padding:5px;">📌 متطلب: ${r.title}</h4>
+                            <table class="print-table" style="margin-bottom: 20px; font-size:12px;">
+                                <tr style="background:#f1f5f9;"><th>التاريخ</th><th>الإجراء</th><th>الملاحظات والتفاصيل</th><th>المستخدم</th></tr>
+                                ${rLogs.map(l => `<tr><td dir="ltr">${new Date(l.timestamp).toLocaleString('ar-SA')}</td><td>${l.action}</td><td>${l.desc}</td><td>${l.user}</td></tr>`).join('')}
+                            </table>`;
+                        }
+                    });
+                    html += `</div>`;
+                }
+
+                html += `</div>`;
+            } else if (type === 'handover') {
+                const h = db.handovers.find(x => x.id === directId);
+                const fromE = db.employees.find(e=>e.id===h.fromEmpId)?.name;
+                const toE = db.employees.find(e=>e.id===h.toEmpId)?.name;
+                
+                html = `
+                    <div class="print-card">
+                        <h1 style="text-align:center; margin-bottom: 20px;">محضر تسليم واستلام أعمال</h1>
+                        <table class="print-table" style="margin-bottom: 20px;">
+                            <tr><th>رقم المحضر</th><td>${h.id.substr(-5)}</td><th>التاريخ</th><td>${h.startDate}</td></tr>
+                            <tr><th>المسلم</th><td style="color:red; font-weight:bold;">${fromE}</td><th>المستلم</th><td style="color:green; font-weight:bold;">${toE}</td></tr>
+                            <tr><th>النوع</th><td>${h.type}</td><th>ملاحظات</th><td>${h.notes||'-'}</td></tr>
+                        </table>
+                        
+                        <h3>العناصر المنقولة (${h.elementsTransferred.length})</h3>
+                        <p style="font-size:12px;">تم نقل عهدة العناصر التالية وإغلاقها على المسلم وفتحها للمستلم في النظام.</p>
+                        
+                        <div style="margin-top:50px; display:flex; justify-content:space-around;">
+                            <div style="text-align:center;"><strong>توقيع المسلم</strong><br><br>......................</div>
+                            <div style="text-align:center;"><strong>توقيع المستلم</strong><br><br>......................</div>
+                            <div style="text-align:center;"><strong>اعتماد رئيس الحسابات</strong><br><br>......................</div>
+                        </div>
+                    </div>`;
+            }
+
+            printArea.innerHTML = html;
+            window.print();
+        }
+
+        // 11. Settings
+        function renderSettings() {
+            const v = document.getElementById('view-settings');
+            v.innerHTML = `
+                <div class="max-w-2xl bg-white dark:bg-darkcard p-6 rounded-lg shadow">
+                    <h3 class="text-xl font-bold border-b pb-2 mb-4 dark:text-white"><i class="fas fa-database text-gray-500 ml-2"></i> إدارة البيانات</h3>
+                    
+                    <div class="space-y-4">
+                        <div class="p-4 bg-gray-50 dark:bg-gray-800 rounded flex justify-between items-center">
+                            <div><p class="font-bold dark:text-white">تصدير البيانات (نسخة احتياطية)</p><p class="text-sm text-gray-500">حفظ جميع البيانات في ملف JSON</p></div>
+                            <button onclick="exportData()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">تصدير <i class="fas fa-download"></i></button>
+                        </div>
+
+                        <div class="p-4 bg-gray-50 dark:bg-gray-800 rounded flex justify-between items-center">
+                            <div><p class="font-bold dark:text-white">استيراد البيانات</p><p class="text-sm text-gray-500">استعادة البيانات من ملف JSON (سيتم استبدال الحالي)</p></div>
+                            <div>
+                                <input type="file" id="importFile" class="hidden" accept=".json" onchange="importData(event)">
+                                <button onclick="document.getElementById('importFile').click()" class="bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700">استيراد <i class="fas fa-upload"></i></button>
+                            </div>
+                        </div>
+
+                        <div class="p-4 bg-red-50 dark:bg-red-900 rounded flex justify-between items-center mt-8 border border-red-200">
+                            <div><p class="font-bold text-red-600 dark:text-red-300">مسح جميع البيانات</p><p class="text-sm text-red-500">إعادة النظام لحالة الصفر. لا يمكن التراجع!</p></div>
+                            <button onclick="clearAllData()" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">مسح النظام <i class="fas fa-trash"></i></button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function exportData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "AccountingSystemBackup_" + new Date().toISOString().split('T')[0] + ".json");
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+            showToast('تم التصدير بنجاح', 'success');
+        }
+
+        function importData(event) {
+            const file = event.target.files[0];
+            if(!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    if(imported.employees && imported.elements) {
+                        db = imported;
+                        saveDB();
+                        showToast('تم استيراد البيانات بنجاح', 'success');
+                        setTimeout(()=> location.reload(), 1000);
+                    } else {
+                        showToast('ملف غير مدعوم', 'error');
+                    }
+                } catch(err) { showToast('خطأ في قراءة الملف', 'error'); }
+            };
+            reader.readAsText(file);
+        }
+
+        function clearAllData() {
+            if(confirm('تحذير خطير: سيتم حذف جميع بيانات النظام والموظفين والمهام بلا رجعة. هل أنت متأكد؟')) {
+                if(prompt('اكتب "نعم" للتأكيد') === 'نعم') {
+                    localStorage.removeItem(DB_KEY);
+                    location.reload();
+                }
+            }
+        }
+
+        // --- Dummy Data Seeder ---
+        function seedDB() {
+            db.elementTypes = [
+                { id: 't1', name: 'بنك', description: 'حسابات بنكية', fields: ['اسم البنك', 'رقم الحساب', 'الآيبان'] },
+                { id: 't2', name: 'صندوق', description: 'صناديق نقدية', fields: ['أمين الصندوق', 'الموقع'] },
+                { id: 't3', name: 'مورد', description: 'موردين بضائع أو خدمات', fields: ['الرقم الضريبي', 'شروط السداد'] },
+                { id: 't4', name: 'عميل', description: 'عملاء الشركة', fields: ['رقم العميل', 'مندوب المبيعات', 'المنطقة'] },
+            ];
+
+            db.employees = [
+                { id: 'e1', code: '1001', name: 'أحمد محمود', title: 'رئيس حسابات', department: 'الإدارة المالية', status: 'نشط', isDeleted: false },
+                { id: 'e2', code: '1002', name: 'سارة خالد', title: 'محاسب بنوك', department: 'الخزينة', status: 'نشط', isDeleted: false },
+                { id: 'e3', code: '1003', name: 'محمد علي', title: 'محاسب موردين', department: 'المدفوعات', status: 'نشط', isDeleted: false },
+                { id: 'e4', code: '1004', name: 'فاطمة سعد', title: 'محاسب عملاء', department: 'التحصيل', status: 'نشط', isDeleted: false }
+            ];
+
+            db.elements = [
+                { id: 'el1', typeId: 't1', code: 'B-001', name: 'بنك الراجحي - جاري', status: 'نشط', currency: 'SAR', dynamicData: {'اسم البنك':'الراجحي'} },
+                { id: 'el2', typeId: 't1', code: 'B-002', name: 'بنك الأهلي - رواتب', status: 'نشط', currency: 'SAR', dynamicData: {'اسم البنك':'الأهلي'} },
+                { id: 'el3', typeId: 't2', code: 'C-001', name: 'صندوق الإدارة الرئيسي', status: 'نشط', currency: 'SAR', dynamicData: {'الموقع':'المركز الرئيسي'} },
+                { id: 'el4', typeId: 't3', code: 'V-100', name: 'شركة التقنية المتقدمة', status: 'نشط', currency: 'SAR', dynamicData: {'شروط السداد':'30 يوم'} },
+            ];
+
+            db.assignments = [
+                { id: 'a1', elementId: 'el1', employeeId: 'e2', startDate: '2023-01-01', status: 'نشط', isPermanent: true },
+                { id: 'a2', elementId: 'el2', employeeId: 'e2', startDate: '2023-01-01', status: 'نشط', isPermanent: true },
+                { id: 'a3', elementId: 'el3', employeeId: 'e1', startDate: '2023-01-01', status: 'نشط', isPermanent: true },
+                { id: 'a4', elementId: 'el4', employeeId: 'e3', startDate: '2023-05-01', status: 'نشط', isPermanent: true },
+            ];
+
+            db.tasks = [
+                { id: 'tk1', title: 'إغلاق ميزانية الربع الثالث', dueDate: new Date(Date.now() + 86400000 * 5).toISOString().split('T')[0], status: 'قيد التنفيذ', priority: 'عالية جداً' },
+                { id: 'tk2', title: 'مطابقة أرصدة الموردين', dueDate: new Date().toISOString().split('T')[0], status: 'بانتظار متطلبات', priority: 'عادية' }
+            ];
+
+            db.requirements = [
+                { id: 'rq1', taskId: 'tk1', title: 'تسوية كشوفات البنوك', employeeId: 'e2', dueDate: new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0], isMandatory: true, status: 'قيد التنفيذ' },
+                { id: 'rq2', taskId: 'tk1', title: 'جرد الصندوق', employeeId: 'e1', dueDate: new Date(Date.now() + 86400000 * 1).toISOString().split('T')[0], isMandatory: true, status: 'مكتمل' },
+                { id: 'rq3', taskId: 'tk2', title: 'طلب مصادقات من أهم 5 موردين', employeeId: 'e3', dueDate: new Date().toISOString().split('T')[0], isMandatory: true, status: 'بانتظار بيانات' }
+            ];
+
+            logAction('تهيئة', 'النظام', '0', 'تهيئة النظام وإنشاء بيانات تجريبية');
+            saveDB();
+        }
+
+        // Initialize App on Load
+        window.onload = initDB;
+
+    </script>
+</body>
+</html>
