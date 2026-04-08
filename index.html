@@ -4,12 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
-    <!-- أكواد منع التخزين المؤقت (Cache-Busting) لضمان ظهور التحديثات من GitHub مباشرة -->
+    <!-- أكواد منع التخزين المؤقت لضمان التحديثات -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     
-    <title>نظام إدارة أعمال رئيس قسم الحسابات</title>
+    <title>نظام إدارة أعمال رئيس قسم الحسابات - Cloud Edition</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -92,6 +92,13 @@
 </head>
 <body class="text-gray-800 antialiased h-screen flex overflow-hidden">
 
+    <!-- شاشة التحميل السحابية -->
+    <div id="cloud-loader" class="fixed inset-0 z-[100] bg-white dark:bg-darkbg flex flex-col items-center justify-center transition-opacity duration-500">
+        <i class="fas fa-cloud-download-alt text-6xl text-blue-500 animate-bounce mb-4"></i>
+        <h2 class="text-2xl font-bold text-gray-800 dark:text-white">جاري الاتصال بالسحابة...</h2>
+        <p class="text-gray-500 mt-2 font-bold" id="cloud-status">يتم الآن المزامنة مع قاعدة بيانات Firebase</p>
+    </div>
+
     <!-- Notification Toast -->
     <div id="toast" class="fixed top-5 left-1/2 transform -translate-x-1/2 z-50 transition-all duration-300 opacity-0 hidden">
         <div class="bg-gray-800 text-white px-6 py-3 rounded shadow-lg flex items-center gap-3">
@@ -105,25 +112,30 @@
 
     <!-- Sidebar -->
     <aside id="sidebar" class="bg-primary text-white w-64 flex-shrink-0 hidden md:flex flex-col shadow-xl z-20">
-        <div class="p-5 flex items-center justify-center border-b border-blue-800">
-            <i class="fas fa-calculator text-3xl ml-3 text-blue-300"></i>
-            <h1 class="text-xl font-bold font-sans tracking-wide">إدارة الحسابات</h1>
+        <div class="p-5 flex items-center justify-center border-b border-blue-800 relative overflow-hidden">
+            <i class="fas fa-cloud text-blue-300 absolute top-2 right-2 text-4xl opacity-20"></i>
+            <i class="fas fa-calculator text-3xl ml-3 text-blue-300 relative z-10"></i>
+            <h1 class="text-xl font-bold font-sans tracking-wide relative z-10">إدارة الحسابات</h1>
         </div>
         <nav class="flex-1 overflow-y-auto py-4 space-y-1">
-            <a href="#" onclick="nav('dashboard')" class="nav-link block px-5 py-3 hover:bg-blue-800 transition border-r-4 border-transparent hover:border-blue-400 active-nav" data-target="dashboard"><i class="fas fa-home ml-3 w-5"></i> لوحة القيادة</a>
-            <a href="#" onclick="nav('employees')" class="nav-link block px-5 py-3 hover:bg-blue-800 transition border-r-4 border-transparent hover:border-blue-400" data-target="employees"><i class="fas fa-users ml-3 w-5"></i> إدارة الموظفين</a>
-            <a href="#" onclick="nav('elementTypes')" class="nav-link block px-5 py-3 hover:bg-blue-800 transition border-r-4 border-transparent hover:border-blue-400" data-target="elementTypes"><i class="fas fa-tags ml-3 w-5"></i> أنواع العناصر</a>
-            <a href="#" onclick="nav('elements')" class="nav-link block px-5 py-3 hover:bg-blue-800 transition border-r-4 border-transparent hover:border-blue-400" data-target="elements"><i class="fas fa-cubes ml-3 w-5"></i> عناصر العمل</a>
-            <a href="#" onclick="nav('assignments')" class="nav-link block px-5 py-3 hover:bg-blue-800 transition border-r-4 border-transparent hover:border-blue-400" data-target="assignments"><i class="fas fa-link ml-3 w-5"></i> إسناد العناصر</a>
-            <a href="#" onclick="nav('tasks')" class="nav-link block px-5 py-3 hover:bg-blue-800 transition border-r-4 border-transparent hover:border-blue-400" data-target="tasks"><i class="fas fa-tasks ml-3 w-5"></i> المهام الرئيسية</a>
-            <a href="#" onclick="nav('requirements')" class="nav-link block px-5 py-3 hover:bg-blue-800 transition border-r-4 border-transparent hover:border-blue-400" data-target="requirements"><i class="fas fa-list-check ml-3 w-5"></i> المتطلبات</a>
-            <a href="#" onclick="nav('handovers')" class="nav-link block px-5 py-3 hover:bg-blue-800 transition border-r-4 border-transparent hover:border-blue-400" data-target="handovers"><i class="fas fa-exchange-alt ml-3 w-5"></i> التسليم والاستلام</a>
-            <a href="#" onclick="nav('reports')" class="nav-link block px-5 py-3 hover:bg-blue-800 transition border-r-4 border-transparent hover:border-blue-400" data-target="reports"><i class="fas fa-chart-bar ml-3 w-5"></i> التقارير</a>
-            <a href="#" onclick="nav('audit')" class="nav-link block px-5 py-3 hover:bg-blue-800 transition border-r-4 border-transparent hover:border-blue-400" data-target="audit"><i class="fas fa-history ml-3 w-5"></i> سجل الحركة</a>
-            <a href="#" onclick="nav('settings')" class="nav-link block px-5 py-3 hover:bg-blue-800 transition border-r-4 border-transparent hover:border-blue-400" data-target="settings"><i class="fas fa-cog ml-3 w-5"></i> الإعدادات</a>
+            <a href="#" onclick="nav('dashboard')" class="nav-link block px-5 py-3 hover:bg-blue-800 transition border-r-4 border-transparent hover:border-blue-400 active-nav" data-target="dashboard"><i class="fas fa-home ml-3 w-5 text-blue-300"></i> لوحة القيادة</a>
+            <div class="px-5 mt-4 mb-2 text-xs text-blue-300 opacity-70 font-bold">هيكلة النظام</div>
+            <a href="#" onclick="nav('employees')" class="nav-link block px-5 py-3 hover:bg-blue-800 transition border-r-4 border-transparent hover:border-blue-400" data-target="employees"><i class="fas fa-users ml-3 w-5 text-blue-300"></i> إدارة الموظفين</a>
+            <a href="#" onclick="nav('elementTypes')" class="nav-link block px-5 py-3 hover:bg-blue-800 transition border-r-4 border-transparent hover:border-blue-400" data-target="elementTypes"><i class="fas fa-tags ml-3 w-5 text-blue-300"></i> أنواع العناصر</a>
+            <a href="#" onclick="nav('elements')" class="nav-link block px-5 py-3 hover:bg-blue-800 transition border-r-4 border-transparent hover:border-blue-400" data-target="elements"><i class="fas fa-cubes ml-3 w-5 text-blue-300"></i> عناصر العمل</a>
+            <a href="#" onclick="nav('assignments')" class="nav-link block px-5 py-3 hover:bg-blue-800 transition border-r-4 border-transparent hover:border-blue-400" data-target="assignments"><i class="fas fa-link ml-3 w-5 text-blue-300"></i> إسناد العناصر</a>
+            <div class="px-5 mt-4 mb-2 text-xs text-blue-300 opacity-70 font-bold">سير العمليات</div>
+            <a href="#" onclick="nav('tasks')" class="nav-link block px-5 py-3 hover:bg-blue-800 transition border-r-4 border-transparent hover:border-blue-400" data-target="tasks"><i class="fas fa-tasks ml-3 w-5 text-blue-300"></i> المهام الرئيسية</a>
+            <a href="#" onclick="nav('requirements')" class="nav-link block px-5 py-3 hover:bg-blue-800 transition border-r-4 border-transparent hover:border-blue-400" data-target="requirements"><i class="fas fa-list-check ml-3 w-5 text-blue-300"></i> المتطلبات</a>
+            <a href="#" onclick="nav('handovers')" class="nav-link block px-5 py-3 hover:bg-blue-800 transition border-r-4 border-transparent hover:border-blue-400" data-target="handovers"><i class="fas fa-exchange-alt ml-3 w-5 text-blue-300"></i> التسليم والاستلام</a>
+            <div class="px-5 mt-4 mb-2 text-xs text-blue-300 opacity-70 font-bold">التقارير والإعدادات</div>
+            <a href="#" onclick="nav('reports')" class="nav-link block px-5 py-3 hover:bg-blue-800 transition border-r-4 border-transparent hover:border-blue-400" data-target="reports"><i class="fas fa-chart-bar ml-3 w-5 text-blue-300"></i> التقارير</a>
+            <a href="#" onclick="nav('audit')" class="nav-link block px-5 py-3 hover:bg-blue-800 transition border-r-4 border-transparent hover:border-blue-400" data-target="audit"><i class="fas fa-history ml-3 w-5 text-blue-300"></i> سجل الحركة</a>
+            <a href="#" onclick="nav('settings')" class="nav-link block px-5 py-3 hover:bg-blue-800 transition border-r-4 border-transparent hover:border-blue-400" data-target="settings"><i class="fas fa-cog ml-3 w-5 text-blue-300"></i> الإعدادات السحابية</a>
         </nav>
-        <div class="p-4 border-t border-blue-800 text-sm text-center text-blue-300">
-            الإصدار 1.5.3
+        <div class="p-4 border-t border-blue-800 text-sm text-center text-blue-300 flex justify-center items-center gap-2 font-bold">
+            <span class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
+            الإصدار 1.6.1 (سحابي)
         </div>
     </aside>
 
@@ -138,6 +150,8 @@
                 <h2 id="page-title" class="text-xl font-bold text-gray-800 dark:text-white">لوحة القيادة</h2>
             </div>
             <div class="flex items-center gap-4">
+                <span id="sync-status" class="hidden md:inline-flex items-center text-xs font-bold text-green-600 bg-green-100 px-2 py-1 rounded"><i class="fas fa-check-circle ml-1"></i> متصل بالسحابة</span>
+                
                 <button onclick="toggleDarkMode()" class="text-gray-500 hover:text-yellow-500 transition" title="تبديل المظهر">
                     <i id="theme-icon" class="fas fa-moon text-xl"></i>
                 </button>
@@ -171,7 +185,99 @@
     <!-- Global Modals Container -->
     <div id="modals-container"></div>
 
-    <!-- Application Script -->
+    <!-- ========================================================================= -->
+    <!-- ☁️ محرك مزامنة فايربيس (Firebase Sync Engine) -->
+    <!-- ========================================================================= -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+        let firebaseConfig;
+        if (typeof __firebase_config !== 'undefined') {
+            // تعمل هذه الجزئية تلقائياً داخل بيئة المعاينة الحالية
+            firebaseConfig = JSON.parse(__firebase_config);
+        } else {
+            // بيانات مشروع TaskPulse الخاصة بك
+            firebaseConfig = {
+                apiKey: "AIzaSyA0mhuv_qg_vg2phsZzTnz5Tvt71PIyMTg",
+                authDomain: "taskpulse-df619.firebaseapp.com",
+                projectId: "taskpulse-df619",
+                storageBucket: "taskpulse-df619.firebasestorage.app",
+                messagingSenderId: "611777155671",
+                appId: "1:611777155671:web:0201c6b28b514d1d638912"
+            };
+        }
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const dbFirestore = getFirestore(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'finance-erp';
+
+        // دالة يتم استدعاؤها من السكربت العادي لرفع البيانات للسحابة
+        window.CloudSync = {
+            save: async function(appData) {
+                if (!auth.currentUser) return;
+                try {
+                    // نظراً لتعقيد وحجم البيانات، سنحفظها كـ نص JSON (Payload) في مستند واحد لسهولة الاسترجاع
+                    const docRef = doc(dbFirestore, 'artifacts', appId, 'users', auth.currentUser.uid, 'financeData', 'state');
+                    await setDoc(docRef, { payload: JSON.stringify(appData), lastUpdated: new Date().toISOString() });
+                    
+                    const syncIcon = document.getElementById('sync-status');
+                    if(syncIcon) {
+                        syncIcon.innerHTML = '<i class="fas fa-check-double ml-1"></i> تم الحفظ بالسحابة';
+                        setTimeout(() => syncIcon.innerHTML = '<i class="fas fa-check-circle ml-1"></i> متصل بالسحابة', 2000);
+                    }
+                } catch(e) {
+                    console.error("Firebase Save Error:", e);
+                    showToast('حدث خطأ في مزامنة السحابة، تم الحفظ محلياً', 'error');
+                }
+            }
+        };
+
+        async function initAuth() {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (err) {
+                console.error("Auth Error", err);
+                document.getElementById('cloud-status').innerText = 'فشل الاتصال بالسحابة.. سيتم العمل على النظام المحلي.';
+                setTimeout(window.initializeFirstTime, 1500); // Fallback to local
+            }
+        }
+
+        initAuth().then(() => {
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    const docRef = doc(dbFirestore, 'artifacts', appId, 'users', user.uid, 'financeData', 'state');
+                    
+                    // الاستماع للتغييرات بشكل حي (Real-time listener)
+                    onSnapshot(docRef, (docSnap) => {
+                        if (docSnap.exists()) {
+                            try {
+                                const cloudData = JSON.parse(docSnap.data().payload);
+                                window.updateLocalDbFromCloud(cloudData);
+                            } catch(e) {
+                                console.error("Error parsing cloud data", e);
+                                window.initializeFirstTime();
+                            }
+                        } else {
+                            // أول مرة يتم فتح النظام لهذا المستخدم في السحابة
+                            window.initializeFirstTime();
+                        }
+                    }, (err) => {
+                        console.error("Listen error", err);
+                        window.initializeFirstTime();
+                    });
+                }
+            });
+        });
+    </script>
+
+    <!-- Application Logic Script -->
     <script>
         // --- State Management ---
         const DB_KEY = 'AccountingDeptSystemDB';
@@ -187,31 +293,69 @@
             settings: { darkMode: false }
         };
 
-        // --- Core Functions ---
-        function initDB() {
+        // يتم استدعاء هذه الدالة من محرك Firebase عند جلب البيانات بنجاح
+        window.updateLocalDbFromCloud = function(cloudData) {
+            db = cloudData;
+            if(db.requirements) {
+                db.requirements.forEach(req => {
+                    if (!req.updates) req.updates = [];
+                });
+            }
+            localStorage.setItem(DB_KEY, JSON.stringify(db)); // حفظ كنسخة محلية احتياطية
+            
+            // تطبيق المظهر
+            if(db.settings && db.settings.darkMode) {
+                document.documentElement.classList.add('dark');
+                const tIcon = document.getElementById('theme-icon');
+                if(tIcon) tIcon.classList.replace('fa-moon', 'fa-sun');
+            }
+            
+            hideCloudLoader();
+            renderDashboard(); // Refresh current view
+        };
+
+        // يتم استدعاء هذه الدالة إذا كانت السحابة فارغة (أول استخدام)
+        window.initializeFirstTime = function() {
             const stored = localStorage.getItem(DB_KEY);
             if (stored) {
                 try {
                     db = JSON.parse(stored);
-                    if(db.settings && db.settings.darkMode) {
-                        document.documentElement.classList.add('dark');
-                        document.getElementById('theme-icon').classList.replace('fa-moon', 'fa-sun');
-                    }
-                    // Data Migration: Ensure existing requirements have updates array
                     if(db.requirements) {
                         db.requirements.forEach(req => {
                             if (!req.updates) req.updates = [];
                         });
                     }
-                } catch(e) { console.error("Error loading DB", e); seedDB(); }
+                } catch(e) { seedDB(); }
             } else {
                 seedDB();
             }
+            
+            // تطبيق المظهر
+            if(db.settings && db.settings.darkMode) {
+                document.documentElement.classList.add('dark');
+                const tIcon = document.getElementById('theme-icon');
+                if(tIcon) tIcon.classList.replace('fa-moon', 'fa-sun');
+            }
+
+            saveDB(); // الرفع الأول للسحابة
+            hideCloudLoader();
             renderDashboard();
+        };
+
+        function hideCloudLoader() {
+            const loader = document.getElementById('cloud-loader');
+            if (loader && !loader.classList.contains('hidden')) {
+                loader.classList.add('opacity-0');
+                setTimeout(() => loader.classList.add('hidden'), 500);
+            }
         }
 
+        // تم التعديل لتشمل المزامنة السحابية
         function saveDB() {
             localStorage.setItem(DB_KEY, JSON.stringify(db));
+            if (window.CloudSync && window.CloudSync.save) {
+                window.CloudSync.save(db);
+            }
         }
 
         function generateId() {
@@ -260,7 +404,7 @@
                     showToast('فشل النسخ التلقائي', 'error');
                 });
             } else {
-                // Fallback for non-https or unsupported browsers
+                // Fallback
                 const textArea = document.createElement("textarea");
                 textArea.value = text;
                 textArea.style.position = "fixed";
@@ -305,7 +449,6 @@
             saveDB();
         }
 
-        // Helper function for Multi-Select Filters
         function getCheckedValues(containerClass) {
             const checkboxes = document.querySelectorAll(`.${containerClass} input[type="checkbox"]:checked`);
             return Array.from(checkboxes).map(cb => cb.value);
@@ -315,7 +458,7 @@
             'dashboard': 'لوحة القيادة', 'employees': 'إدارة الموظفين', 'elementTypes': 'أنواع العناصر',
             'elements': 'عناصر العمل', 'assignments': 'إسناد العناصر', 'tasks': 'المهام الرئيسية',
             'requirements': 'متطلبات المهام', 'handovers': 'التسليم والاستلام', 'reports': 'التقارير',
-            'audit': 'سجل الحركة', 'settings': 'الإعدادات'
+            'audit': 'سجل الحركة', 'settings': 'الإعدادات السحابية'
         };
 
         function nav(section) {
@@ -348,7 +491,6 @@
             }
         }
 
-        // --- Modal System ---
         function openModal(id, htmlContent) {
             let container = document.getElementById('modals-container');
             container.innerHTML = `
@@ -383,7 +525,7 @@
                 rows[i].style.display = rowText.toLowerCase().includes(filter) ? '' : 'none';
             }
         }
-        
+
         function viewEntityHistory(entityId, title) {
             const logs = db.auditLog.filter(l => l.entityId === entityId);
             let html = `
@@ -431,20 +573,18 @@
 
             const path = update.attachmentPath;
 
-            // Check if we are running from a web server (http/https)
             if (window.location.protocol === 'http:' || window.location.protocol === 'https:') {
                 e.preventDefault();
-                copyToClipboard(path); // Auto copy to clipboard
+                copyToClipboard(path); 
                 
-                // Show instructive modal
                 let html = `
                     <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center bg-yellow-50 dark:bg-yellow-900/20 rounded-t-xl">
-                        <h3 class="text-lg font-bold text-yellow-700 dark:text-yellow-400"><i class="fas fa-shield-alt ml-2"></i>تنبيه أمني من المتصفح</h3>
+                        <h3 class="text-lg font-bold text-yellow-700 dark:text-yellow-400"><i class="fas fa-shield-alt ml-2"></i>تنبيه أمني من المتصفح (حماية سحابية)</h3>
                         <button onclick="closeModal('localFileModal')" class="text-gray-500 hover:text-red-500"><i class="fas fa-times text-xl"></i></button>
                     </div>
                     <div class="p-6 space-y-4">
                         <p class="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-                            نظراً لأنك تستخدم النظام عبر الإنترنت (مثلاً من GitHub)، فإن المتصفح (Chrome/Edge) يمنع فتح الملفات الموجودة في جهازك أو السيرفر الداخلي لحمايتك من الاختراق والفيروسات.
+                            نظراً لأنك تستخدم النظام في نسخته السحابية (عبر الإنترنت)، فإن المتصفح يمنع فتح الملفات الموجودة في جهازك أو السيرفر الداخلي لحمايتك من الاختراق.
                         </p>
                         <div class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-4 rounded-lg">
                             <h4 class="font-bold text-green-800 dark:text-green-400 mb-3"><i class="fas fa-check-circle ml-2"></i>تم نسخ مسار الملف! لفتحه اتبع التالي:</h4>
@@ -466,12 +606,11 @@
                 openModal('localFileModal', html);
                 return false;
             }
-            return true; // Let it open normally if running locally file:///
+            return true;
         }
 
         // --- View Renderers ---
 
-        // 1. Dashboard
         function renderDashboard() {
             const v = document.getElementById('view-dashboard');
             
@@ -479,7 +618,6 @@
             const activeElements = db.elements.filter(e => e.status === 'نشط').length;
             const openTasks = db.tasks.filter(t => ['جديدة','قيد التنفيذ','بانتظار متطلبات'].includes(t.status)).length;
             const lateTasks = db.tasks.filter(t => ['جديدة','قيد التنفيذ','بانتظار متطلبات'].includes(t.status) && new Date(t.dueDate) < new Date()).length;
-            
             const openReqs = db.requirements.filter(r => ['جديد','مسند','قيد التنفيذ','بانتظار بيانات', 'معاد للتصحيح'].includes(r.status)).length;
             const openHandovers = db.handovers.filter(h => h.status === 'مفتوح').length;
 
@@ -554,7 +692,7 @@
             `;
         }
 
-        // ... (Keep existing Employees, ElementTypes, Elements, Assignments code untouched)
+        // 2. Employees
         function renderEmployees() {
             const v = document.getElementById('view-employees');
             let emps = db.employees.filter(e => !e.isDeleted);
@@ -1507,7 +1645,7 @@
             `;
         }
 
-        // 10. Reports (Completely Overhauled Task Report to show Updates)
+        // 10. Reports
         function renderReports() {
             const v = document.getElementById('view-reports');
             let empOpts = db.employees.filter(e => !e.isDeleted).map(e => `<option value="${e.id}">${e.name}</option>`).join('');
@@ -1688,6 +1826,11 @@
                             <div><p class="font-bold dark:text-white">تصدير البيانات (نسخة احتياطية)</p></div>
                             <button onclick="exportData()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">تصدير <i class="fas fa-download"></i></button>
                         </div>
+                        <div class="p-4 bg-gray-50 dark:bg-gray-800 rounded flex justify-between items-center">
+                            <div><p class="font-bold dark:text-white">استيراد البيانات</p></div>
+                            <input type="file" id="importFile" class="hidden" accept=".json" onchange="importData(event)">
+                            <button onclick="document.getElementById('importFile').click()" class="bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700">استيراد <i class="fas fa-upload"></i></button>
+                        </div>
                     </div>
                 </div>
             `;
@@ -1701,6 +1844,26 @@
             document.body.appendChild(downloadAnchorNode);
             downloadAnchorNode.click();
             downloadAnchorNode.remove();
+        }
+        
+        function importData(event) {
+            const file = event.target.files[0];
+            if(!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    if(imported.employees && imported.elements) {
+                        db = imported;
+                        saveDB();
+                        showToast('تم استيراد البيانات بنجاح', 'success');
+                        setTimeout(()=> location.reload(), 1000);
+                    } else {
+                        showToast('ملف غير مدعوم', 'error');
+                    }
+                } catch(err) { showToast('خطأ في قراءة الملف', 'error'); }
+            };
+            reader.readAsText(file);
         }
 
         // --- Dummy Data Seeder ---
@@ -1735,8 +1898,10 @@
             saveDB();
         }
 
-        // Initialize App on Load
-        window.onload = initDB;
+        window.onload = function() {
+            // تتم التهيئة تلقائياً عبر محرك Firebase (CloudSync)
+            // انظر الدالة window.initializeFirstTime و window.updateLocalDbFromCloud
+        };
 
     </script>
 </body>
