@@ -206,7 +206,7 @@
     <!-- ========================================================================= -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 
         let firebaseConfig;
@@ -299,6 +299,37 @@
                     console.error("Firebase Save Error:", e);
                     window.updateConnectionUI('error');
                 }
+            }
+        };
+
+        // 🛟 دالة استرجاع البيانات القديمة من المسار السابق
+        window.recoverOldCloudData = async function() {
+            if (!auth.currentUser) {
+                if(typeof showToast !== 'undefined') showToast('يجب الاتصال بالسحابة أولاً', 'error');
+                return;
+            }
+            try {
+                if(typeof showToast !== 'undefined') showToast('جاري البحث عن بياناتك القديمة في السحابة...', 'info');
+                
+                // البحث في المسار الفردي القديم
+                const oldDocRef = doc(dbFirestore, 'artifacts', appId, 'users', auth.currentUser.uid, 'financeData', 'state');
+                const docSnap = await getDoc(oldDocRef);
+                
+                if (docSnap.exists()) {
+                    const oldData = JSON.parse(docSnap.data().payload);
+                    window.updateLocalDbFromCloud(oldData);
+                    
+                    // حفظها فوراً في المسار المشترك الجديد
+                    if (window.CloudSync && window.CloudSync.save) {
+                        window.CloudSync.save(oldData);
+                    }
+                    if(typeof showToast !== 'undefined') showToast('🎉 تم استرجاع بياناتك السابقة بنجاح!', 'success');
+                } else {
+                    if(typeof showToast !== 'undefined') showToast('لم يتم العثور على بيانات قديمة مسجلة.', 'error');
+                }
+            } catch(e) {
+                console.error("Recovery Error:", e);
+                if(typeof showToast !== 'undefined') showToast('حدث خطأ أثناء الاسترجاع', 'error');
             }
         };
 
@@ -2010,6 +2041,15 @@
                                 <button onclick="document.getElementById('importFile').click()" class="bg-yellow-600 text-white px-5 py-2.5 rounded-lg hover:bg-yellow-700 font-bold shadow-md transition transform hover:-translate-y-0.5 text-gray-900"><i class="fas fa-upload ml-1"></i> استيراد</button>
                             </div>
                         </div>
+                    </div>
+
+                    <!-- 🛟 زر الإنقاذ للبيانات السابقة -->
+                    <div class="p-5 bg-red-50 dark:bg-red-900/20 rounded-xl flex justify-between items-center border border-red-200 dark:border-red-800 shadow-sm mt-6">
+                        <div>
+                            <p class="font-bold text-red-700 dark:text-red-400 text-lg"><i class="fas fa-life-ring ml-1"></i> الإنقاذ السحابي (استرجاع البيانات)</p>
+                            <p class="text-sm text-red-600 dark:text-red-300 mt-1">إذا فقدت بياناتك بعد التحديث، اضغط هنا للبحث في المسار القديم واسترجاعها فوراً.</p>
+                        </div>
+                        <button onclick="recoverOldCloudData()" class="bg-red-600 text-white px-5 py-2.5 rounded-lg hover:bg-red-700 font-bold shadow-md transition transform hover:-translate-y-0.5 whitespace-nowrap">استرجاع الآن</button>
                     </div>
 
                     ${usersHTML}
