@@ -41,17 +41,21 @@
         .dark ::-webkit-scrollbar-thumb { background: #4b5563; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
         #sidebar { transition: transform 0.3s ease-in-out; }
+        
+        /* إعدادات الطباعة المكثفة (Ultra-Compact Print) */
         @media print {
-            html, body { height: auto !important; overflow: visible !important; background: white !important; }
+            @page { margin: 10mm; size: A4 portrait; }
+            html, body { height: auto !important; overflow: visible !important; background: white !important; margin: 0; padding: 0; }
             body * { visibility: hidden; }
-            #print-area { display: block !important; visibility: visible !important; position: absolute; left: 0; top: 0; width: 100%; direction: rtl; }
+            #print-area { display: block !important; visibility: visible !important; position: absolute; left: 0; top: 0; width: 100%; direction: rtl; padding: 0 !important; }
             #print-area * { visibility: visible !important; color: black !important; }
+            * { -webkit-print-color-adjust: exact !important; color-adjust: exact !important; }
             .no-print { display: none !important; }
-            .print-card { border: 1px solid #ccc; padding: 15px; margin-bottom: 15px; page-break-inside: avoid; }
-            .print-table { width: 100%; border-collapse: collapse; }
-            .print-table th, .print-table td { border: 1px solid #000; padding: 8px; text-align: right; }
-            .print-update-box { background-color: #f8fafc !important; border-right: 3px solid #3b82f6 !important; padding: 10px; margin-top: 5px; margin-bottom: 10px; page-break-inside: avoid;}
+            .print-card { border: 1px solid #000; padding: 8px; margin-bottom: 10px; page-break-inside: avoid; }
+            .print-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+            .print-table th, .print-table td { border: 1px solid #000; padding: 4px; text-align: right; }
         }
+
         .glass-effect { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
         .dark .glass-effect { background: rgba(31, 41, 55, 0.95); }
         .modal-content { max-height: 90vh; overflow-y: auto; }
@@ -117,9 +121,6 @@
         </div>
     </div>
 
-    <!-- Task Hover Tooltip Container -->
-    <div id="task-tooltip" class="fixed z-50 hidden bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-2xl rounded-lg p-4 w-80 pointer-events-none transition-opacity duration-200 opacity-0" style="direction: rtl;"></div>
-
     <!-- Sidebar -->
     <aside id="sidebar" class="bg-primary text-white w-64 flex-shrink-0 hidden md:flex flex-col shadow-xl z-20">
         <div class="p-5 flex items-center justify-center border-b border-blue-800 relative overflow-hidden">
@@ -145,7 +146,7 @@
         </nav>
         <div class="p-4 border-t border-blue-800 text-sm text-center text-blue-300 flex justify-center items-center gap-2 font-bold">
             <span class="w-2 h-2 rounded-full bg-green-400 animate-pulse" id="sidebar-sync-indicator"></span>
-            الإصدار 1.7.1 (Secured)
+            الإصدار 1.7.2 (Secured + Compact Print)
         </div>
     </aside>
 
@@ -159,7 +160,6 @@
                 <h2 id="page-title" class="text-xl font-bold text-gray-800 dark:text-white">لوحة القيادة</h2>
             </div>
             <div class="flex items-center gap-4">
-                <!-- تم تحويل الحالة إلى زر تفاعلي لفحص الاتصال -->
                 <button id="sync-status" onclick="forceSyncCheck()" title="اضغط لفحص الاتصال والمزامنة" class="hidden md:inline-flex items-center text-xs font-bold text-gray-600 bg-gray-100 px-3 py-1.5 rounded transition-colors duration-300 shadow-sm border border-gray-200 cursor-pointer hover:bg-gray-200">
                     <i class="fas fa-spinner fa-spin ml-1"></i> فحص الاتصال...
                 </button>
@@ -171,10 +171,8 @@
                     <div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold">
                         <i class="fas fa-user text-sm"></i>
                     </div>
-                    <!-- اسم المستخدم سيظهر هنا تلقائياً -->
                     <span id="current-user-name" class="text-sm font-bold dark:text-gray-200 hidden sm:block text-primary dark:text-blue-400">...</span>
                 </div>
-                <!-- زر تسجيل الخروج -->
                 <button onclick="systemLogout()" class="ml-2 text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:hover:bg-red-900/50 w-8 h-8 rounded flex items-center justify-center transition" title="تسجيل الخروج">
                     <i class="fas fa-sign-out-alt"></i>
                 </button>
@@ -255,7 +253,6 @@
             }
         };
 
-        // الدالة المسؤولة عن الفحص اليدوي للاتصال عند الضغط على الزر
         window.forceSyncCheck = async function() {
             if (!navigator.onLine) {
                 if(typeof showToast !== 'undefined') showToast('أنت غير متصل بالإنترنت حالياً', 'error');
@@ -269,7 +266,6 @@
                 await initAuth();
             } else {
                 if(typeof showToast !== 'undefined') showToast('جاري فحص الاتصال ومزامنة البيانات...', 'info');
-                // محاولة دفع البيانات للسحابة للتأكد من الاتصال
                 if (window.CloudSync && window.CloudSync.save && typeof db !== 'undefined') {
                     window.CloudSync.save(db);
                 }
@@ -296,7 +292,6 @@
 
                 window.updateConnectionUI('syncing');
                 try {
-                    // تم إصلاح مسار المستند ليتكون من عدد زوجي من المقاطع (6 مقاطع بدلاً من 5) ليكون مستنداً صالحاً في Firestore
                     const docRef = doc(dbFirestore, 'artifacts', appId, 'public', 'data', 'sharedState', 'main');
                     await setDoc(docRef, { payload: JSON.stringify(appData), lastUpdated: new Date().toISOString() });
                     window.updateConnectionUI('online');
@@ -347,7 +342,6 @@
 
             onAuthStateChanged(auth, (user) => {
                 if (user) {
-                    // تم إصلاح مسار المستند ليتكون من عدد زوجي من المقاطع (6 مقاطع بدلاً من 5) ليكون مستنداً صالحاً في Firestore
                     const docRef = doc(dbFirestore, 'artifacts', appId, 'public', 'data', 'sharedState', 'main');
                     onSnapshot(docRef, (docSnap) => {
                         isConnectedInitially = true;
@@ -380,15 +374,13 @@
     <script>
         const DB_KEY = 'AccountingDeptSystemDB';
         let db = {
-            users: [], // 🔐 قائمة حسابات الدخول للنظام
+            users: [], 
             employees: [], elementTypes: [], elements: [], assignments: [],
             tasks: [], requirements: [], handovers: [], auditLog: [], settings: { darkMode: false }
         };
 
-        // متغير يحفظ جلسة المستخدم الحالي
         let activeSessionUser = null;
 
-        // 🔐 نظام التحقق من الدخول (Auth Logic)
         function checkAppAuthentication() {
             const savedSession = sessionStorage.getItem('activeAppUser');
             if(savedSession) {
@@ -396,11 +388,9 @@
                 document.getElementById('login-screen').classList.add('opacity-0', 'pointer-events-none');
                 setTimeout(() => document.getElementById('login-screen').classList.add('hidden'), 500);
                 
-                // تحديث واجهة المستخدم حسب الصلاحية
                 document.getElementById('current-user-name').innerText = activeSessionUser.name;
                 applyRolePermissions();
             } else {
-                // إظهار شاشة الدخول
                 document.getElementById('login-screen').classList.remove('hidden', 'opacity-0', 'pointer-events-none');
             }
         }
@@ -410,7 +400,6 @@
             const un = document.getElementById('login-username').value.trim();
             const pw = document.getElementById('login-password').value;
 
-            // التأكد من وجود مدير افتراضي في حال كانت القاعدة فارغة (أول مرة)
             if(!db.users || db.users.length === 0) {
                 db.users = [{ id: generateId(), username: 'admin', password: '123', name: 'المدير العام (Admin)', role: 'admin' }];
                 saveDB();
@@ -440,10 +429,9 @@
         function applyRolePermissions() {
             if(!activeSessionUser) return;
             
-            // إذا لم يكن مديراً، يتم إخفاء قسم الإعدادات لمنع العبث بالنظام وحسابات المستخدمين
             if(activeSessionUser.role !== 'admin') {
                 document.getElementById('nav-settings').style.display = 'none';
-                document.getElementById('nav-employees').style.display = 'none'; // اختياري: إخفاء إدارة الموظفين أيضاً
+                document.getElementById('nav-employees').style.display = 'none'; 
             } else {
                 document.getElementById('nav-settings').style.display = 'block';
                 document.getElementById('nav-employees').style.display = 'block';
@@ -454,7 +442,6 @@
         window.updateLocalDbFromCloud = function(cloudData) {
             db = cloudData;
             
-            // تهيئات أمان وقاعدة بيانات لتفادي الأخطاء
             if(!db.users) db.users = [{ id: generateId(), username: 'admin', password: '123', name: 'المدير العام', role: 'admin' }];
             if(db.requirements) { db.requirements.forEach(req => { if (!req.updates) req.updates = []; }); }
             
@@ -467,7 +454,7 @@
             }
             
             hideCloudLoader();
-            checkAppAuthentication(); // فحص الدخول بدلاً من فتح اللوحة مباشرة
+            checkAppAuthentication(); 
             if(activeSessionUser) renderDashboard(); 
         };
 
@@ -549,9 +536,6 @@
             }, 3000);
         }
 
-        // ==========================================
-        // تنظيف ومسح علامات التنصيص والنسخ الآمن
-        // ==========================================
         function copyToClipboard(text) {
             let cleanText = text.replace(/^["']+|["']+$/g, '').trim();
             let windowsSafePath = `"${cleanText}"`;
@@ -1379,7 +1363,6 @@
                 if(r.status === 'بانتظار بيانات') statusClass = 'bg-yellow-100 text-yellow-800';
                 if(r.status === 'معاد للتصحيح') statusClass = 'bg-orange-100 text-orange-800';
 
-                // Count updates
                 const updatesCount = r.updates ? r.updates.length : 0;
 
                 return `
@@ -1416,7 +1399,6 @@
             
             let updatesSectionHTML = '';
             if(id) {
-                // الفرز التلقائي للتحديثات لضمان الترتيب الزمني الصحيح دائماً
                 const sortedUpdates = [...r.updates].sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
                 const updatesListHTML = sortedUpdates.map(up => {
                     let attachmentHTML = '';
@@ -1452,7 +1434,6 @@
                     `;
                 }).join('');
 
-                // جلب الوقت الحالي لتعبئة الحقل افتراضياً
                 const now = new Date();
                 const tzOffset = now.getTimezoneOffset() * 60000;
                 const localISOTime = (new Date(now - tzOffset)).toISOString().slice(0, 16);
@@ -1557,7 +1538,6 @@
 
             if(!text) { showToast('يجب كتابة نص التحديث', 'error'); return; }
 
-            // تحديد الوقت بناءً على اختيار المستخدم
             let timestamp = new Date().toISOString();
             if(timeStr) {
                 timestamp = new Date(timeStr).toISOString();
@@ -1573,6 +1553,10 @@
                     user: activeSessionUser ? activeSessionUser.name : 'مستخدم مجهول'
                 };
                 db.requirements[reqIdx].updates.unshift(newUpdate);
+                
+                // فرز التحديثات لإبقاء التسلسل الزمني صحيحاً
+                db.requirements[reqIdx].updates.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+                
                 saveDB();
                 showToast('تم إضافة التحديث بنجاح', 'success');
                 openReqForm(reqId); 
@@ -1591,18 +1575,79 @@
             }
         }
 
-        function editReqUpdate(reqId, updateId) {
+        // نافذة التعديل الشامل للتحديثات
+        window.editReqUpdate = function(reqId, updateId) {
             const reqIdx = db.requirements.findIndex(x => x.id === reqId);
             if(reqIdx > -1) {
                 const update = db.requirements[reqIdx].updates.find(u => u.id === updateId);
                 if(update) {
-                    const newText = prompt('تعديل نص التحديث:', update.text);
-                    if(newText !== null && newText.trim() !== '') {
-                        update.text = newText.trim();
-                        saveDB();
-                        showToast('تم تعديل التحديث بنجاح', 'success');
-                        openReqForm(reqId);
+                    let localISOTime = '';
+                    if (update.timestamp) {
+                        const now = new Date(update.timestamp);
+                        const tzOffset = now.getTimezoneOffset() * 60000;
+                        localISOTime = (new Date(now - tzOffset)).toISOString().slice(0, 16);
                     }
+
+                    let html = `
+                        <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center flex-shrink-0 bg-gray-50 dark:bg-gray-800 rounded-t-xl">
+                            <h3 class="text-lg font-bold dark:text-white"><i class="fas fa-edit text-blue-500 ml-2"></i> تعديل التحديث الشامل</h3>
+                            <button onclick="closeModal('editUpdateModal')" class="text-gray-500 hover:text-red-500"><i class="fas fa-times text-xl"></i></button>
+                        </div>
+                        <div class="p-6 overflow-y-auto flex-1">
+                            <form onsubmit="saveEditedUpdate(event, '${reqId}', '${updateId}')" class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-bold mb-1 dark:text-gray-300">نص التحديث والتعليق</label>
+                                    <textarea id="edit_upd_text" required class="form-input h-24 font-medium">${update.text}</textarea>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-bold mb-1 dark:text-gray-300"><i class="fas fa-clock ml-1"></i> التاريخ والوقت</label>
+                                        <input type="datetime-local" id="edit_upd_time" required class="form-input" value="${localISOTime}">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-bold mb-1 dark:text-gray-300"><i class="fas fa-paperclip ml-1"></i> مسار المرفق</label>
+                                        <input type="text" id="edit_upd_attach" class="form-input" dir="ltr" value="${update.attachmentPath ? update.attachmentPath.replace(/"/g, '&quot;') : ''}">
+                                    </div>
+                                </div>
+                                <div class="flex justify-end gap-3 mt-6">
+                                    <button type="button" onclick="closeModal('editUpdateModal')" class="px-5 py-2 bg-gray-200 text-gray-800 font-bold rounded-lg hover:bg-gray-300">إلغاء</button>
+                                    <button type="submit" class="px-6 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-800 shadow-md"><i class="fas fa-save ml-2"></i> حفظ التعديلات</button>
+                                </div>
+                            </form>
+                        </div>
+                    `;
+                    openModal('editUpdateModal', html);
+                }
+            }
+        }
+
+        window.saveEditedUpdate = function(e, reqId, updateId) {
+            e.preventDefault();
+            const text = document.getElementById('edit_upd_text').value.trim();
+            let attach = document.getElementById('edit_upd_attach').value.trim();
+            const timeStr = document.getElementById('edit_upd_time').value;
+
+            attach = attach.replace(/^["']+|["']+$/g, '').trim();
+
+            if(!text) { showToast('يجب كتابة نص التحديث', 'error'); return; }
+
+            const reqIdx = db.requirements.findIndex(x => x.id === reqId);
+            if(reqIdx > -1) {
+                const updIdx = db.requirements[reqIdx].updates.findIndex(u => u.id === updateId);
+                if(updIdx > -1) {
+                    db.requirements[reqIdx].updates[updIdx].text = text;
+                    db.requirements[reqIdx].updates[updIdx].attachmentPath = attach;
+                    if(timeStr) {
+                        db.requirements[reqIdx].updates[updIdx].timestamp = new Date(timeStr).toISOString();
+                    }
+                    
+                    // إعادة الفرز بعد التعديل لضمان التسلسل الصحيح
+                    db.requirements[reqIdx].updates.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+                    
+                    saveDB();
+                    closeModal('editUpdateModal');
+                    showToast('تم تعديل التحديث بنجاح', 'success');
+                    openReqForm(reqId); 
                 }
             }
         }
@@ -1747,7 +1792,7 @@
 
                     <div class="bg-white dark:bg-darkcard p-6 rounded-lg shadow border-t-4 border-green-500">
                         <h3 class="text-xl font-bold border-b pb-2 mb-4 dark:text-white"><i class="fas fa-project-diagram text-green-500 ml-2"></i> تقرير المهمة (تتبعي وميداني)</h3>
-                        <p class="text-xs text-gray-500 mb-4 leading-relaxed">يستخرج المهمة، والمتطلبات، وجميع التحديثات التي تمت عليها خطوة بخطوة.</p>
+                        <p class="text-xs text-gray-500 mb-4 leading-relaxed">يستخرج المهمة، والمتطلبات، وجميع التحديثات التي تمت عليها خطوة بخطوة بشكل مكثف للطباعة.</p>
                         <select id="rep_taskId" class="form-input mb-4 font-bold border-green-200"><option value="">اختر المهمة المطلوبة...</option>${taskOpts}</select>
                         <button onclick="printReport('task')" class="w-full bg-green-600 text-white py-3 font-bold rounded-lg hover:bg-green-700 shadow-md"><i class="fas fa-file-pdf ml-2"></i> عرض وطباعة التقرير الشامل</button>
                     </div>
@@ -1802,73 +1847,72 @@
                 const completedCount = reqs.filter(r=>r.status==='مكتمل').length;
                 const prog = reqs.length === 0 ? 0 : Math.round((completedCount/reqs.length)*100);
 
-                // تصميم جديد مكثف ومضغوط جداً للطباعة وتوفير الأوراق
+                // ==========================================
+                // محرك الطباعة الجديد (Ultra-Compact Print)
+                // ==========================================
                 html = `
-                    <div style="font-family: 'Tajawal', Arial, sans-serif; font-size: 11px; line-height: 1.3;">
-                        <div style="text-align:center; border-bottom: 2px solid #000; padding-bottom: 3px; margin-bottom: 8px;">
-                            <h2 style="margin: 0; font-size: 18px; font-weight: 900;">التقرير التتبعي الشامل للمهمة</h2>
+                    <div style="font-family: 'Tajawal', Arial, sans-serif; direction: rtl; color: #000; background: #fff;">
+                        <div style="text-align:center; border-bottom: 2px solid #000; padding-bottom: 3px; margin-bottom: 10px;">
+                            <h2 style="margin: 0; font-size: 16px; font-weight: 900;">التقرير التتبعي الشامل للمهمة</h2>
                             <p style="margin: 2px 0 0 0; font-size: 10px; color: #555;">تاريخ الاستخراج: ${new Date().toLocaleString('ar-SA')} | نظام الإدارة المالية ERP</p>
                         </div>
                         
                         <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px; border: 1px solid #000; font-size: 11px;">
                             <tr>
-                                <th style="width: 12%; border: 1px solid #000; padding: 4px; background-color: #f1f5f9; text-align: right;">عنوان المهمة:</th>
-                                <td style="width: 38%; border: 1px solid #000; padding: 4px; font-weight: 900; font-size: 14px;">${task.title}</td>
-                                <th style="width: 12%; border: 1px solid #000; padding: 4px; background-color: #f1f5f9; text-align: right;">الاستحقاق:</th>
+                                <td style="width: 12%; border: 1px solid #000; padding: 4px; background-color: #e5e7eb; font-weight: bold;">عنوان المهمة:</td>
+                                <td style="width: 38%; border: 1px solid #000; padding: 4px; font-weight: 900; font-size: 13px;">${task.title}</td>
+                                <td style="width: 12%; border: 1px solid #000; padding: 4px; background-color: #e5e7eb; font-weight: bold;">الاستحقاق:</td>
                                 <td style="width: 38%; border: 1px solid #000; padding: 4px; font-weight: bold; color: #dc2626;" dir="ltr">${task.dueDate}</td>
                             </tr>
                             <tr>
-                                <th style="border: 1px solid #000; padding: 4px; background-color: #f1f5f9; text-align: right;">الحالة:</th>
+                                <td style="border: 1px solid #000; padding: 4px; background-color: #e5e7eb; font-weight: bold;">الحالة:</td>
                                 <td style="border: 1px solid #000; padding: 4px; font-weight: bold;">${task.status} (إنجاز: ${prog}%)</td>
-                                <th style="border: 1px solid #000; padding: 4px; background-color: #f1f5f9; text-align: right;">الأولوية/التصنيف:</th>
+                                <td style="border: 1px solid #000; padding: 4px; background-color: #e5e7eb; font-weight: bold;">التصنيف:</td>
                                 <td style="border: 1px solid #000; padding: 4px;">${task.priority || ''} / ${task.category || '-'}</td>
                             </tr>
                             <tr>
-                                <th style="border: 1px solid #000; padding: 4px; background-color: #f1f5f9; text-align: right; vertical-align: top;">وصف المهمة:</th>
+                                <td style="border: 1px solid #000; padding: 4px; background-color: #e5e7eb; font-weight: bold; vertical-align: top;">وصف المهمة:</td>
                                 <td colspan="3" style="border: 1px solid #000; padding: 4px; white-space: pre-wrap;">${task.description || 'لا يوجد وصف مدخل لهذه المهمة.'}</td>
                             </tr>
                         </table>
                         
-                        <div style="font-weight: 900; font-size: 13px; border-bottom: 2px solid #000; margin-bottom: 6px; padding-bottom: 2px;">متطلبات المهمة وسجل التحديثات:</div>
-                        `;
+                        <div style="font-weight: 900; font-size: 12px; border-bottom: 2px solid #000; margin-bottom: 6px; padding-bottom: 2px;">متطلبات المهمة وسجل التحديثات الحية:</div>
+                `;
 
                 if(reqs.length === 0) {
-                    html += `<p style="text-align:center; font-size:11px; padding:5px;">لا توجد متطلبات مرتبطة بهذه المهمة.</p>`;
+                    html += `<div style="text-align:center; font-size:11px; padding:5px; color:#555;">لا توجد متطلبات مرتبطة بهذه المهمة.</div>`;
                 }
 
                 reqs.forEach((r, index) => {
                     const empName = db.employees.find(e=>e.id===r.employeeId)?.name || 'غير محدد';
                     
                     html += `
-                    <div style="margin-bottom: 8px; border: 1px solid #64748b; page-break-inside: avoid; border-radius: 2px;">
-                        <div style="background-color: #e2e8f0; padding: 4px 6px; font-weight: 900; display: flex; justify-content: space-between; border-bottom: 1px solid #64748b;">
+                    <div style="margin-bottom: 8px; border: 1px solid #374151; page-break-inside: avoid;">
+                        <div style="background-color: #e2e8f0; padding: 4px 6px; font-weight: bold; display: flex; justify-content: space-between; border-bottom: 1px solid #374151; font-size: 11px;">
                             <span>${index + 1}. ${r.title}</span>
-                            <span style="font-size: 10px; font-weight: normal;">[${r.status}] | المسؤول: ${empName} | موعد: <span dir="ltr">${r.dueDate}</span></span>
+                            <span style="font-weight: normal;">[${r.status}] | م: ${empName} | الموعد: <span dir="ltr">${r.dueDate}</span></span>
                         </div>
-                        <div style="padding: 2px 4px;">
+                        <div style="padding: 2px;">
                     `;
 
                     if(!r.updates || r.updates.length === 0) {
-                        html += `<p style="margin:2px 0; font-size:10px; color:#64748b; text-align:center; font-style:italic;">لا توجد تحديثات مسجلة</p>`;
+                        html += `<div style="margin:2px 0; font-size:10px; color:#6b7280; text-align:center; font-style:italic;">لا توجد تحديثات مسجلة</div>`;
                     } else {
+                        // ترتيب زمني من الأقدم للأحدث للطباعة ليسهل تتبع القصة
                         const sortedUpdates = [...r.updates].sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp));
                         
                         html += `<table style="width: 100%; border-collapse: collapse; font-size: 10px;">`;
                         sortedUpdates.forEach((up, upIndex) => {
-                            // إضافة خط فاصل بين التعليقات، إلا في التعليق الأخير
                             const isLast = upIndex === sortedUpdates.length - 1;
-                            const borderStyle = isLast ? 'none' : '1px dashed #cbd5e1';
+                            const borderStyle = isLast ? 'none' : '1px dashed #94a3b8';
                             
                             html += `
                                 <tr>
-                                    <td style="width: 22%; padding: 3px; border-bottom: ${borderStyle}; vertical-align: top; color: #475569; border-left: 1px solid #e2e8f0;">
-                                        <div dir="ltr" style="text-align: right;">${new Date(up.timestamp).toLocaleString('ar-SA')}</div>
+                                    <td style="width: 20%; padding: 3px; border-bottom: ${borderStyle}; vertical-align: top; color: #475569; border-left: 1px solid #cbd5e1;">
+                                        <div dir="ltr" style="text-align: right;">${new Date(up.timestamp).toLocaleString('ar-SA', {year:'numeric',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})}</div>
                                         <div style="font-weight: bold; color: #0f172a; margin-top: 2px;">${up.user}</div>
                                     </td>
-                                    <td style="width: 78%; padding: 3px 6px; border-bottom: ${borderStyle}; vertical-align: top; white-space: pre-wrap;">
-                                        ${up.text}
-                                        ${up.attachmentPath ? `<div style="margin-top: 3px; color: #2563eb; font-family: monospace; font-size: 9px; background: #eff6ff; padding: 2px; border-radius: 2px;">📎 ${up.attachmentPath.replace(/['"]/g, '')}</div>` : ''}
-                                    </td>
+                                    <td style="width: 80%; padding: 3px 6px; border-bottom: ${borderStyle}; vertical-align: top; white-space: pre-wrap;">${up.text}${up.attachmentPath ? `<div style="margin-top: 3px; color: #2563eb; font-family: monospace; font-size: 9px; background: #f8fafc; padding: 2px; border-radius: 2px;">📎 ${up.attachmentPath.replace(/['"]/g, '')}</div>` : ''}</td>
                                 </tr>
                             `;
                         });
@@ -1973,7 +2017,6 @@
             `;
         }
 
-        // نافذة إضافة مستخدم جديد للنظام
         function openUserForm() {
             let html = `
                 <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center flex-shrink-0 bg-gray-50 dark:bg-gray-800 rounded-t-xl">
@@ -2015,7 +2058,6 @@
         function saveSystemUser(e) {
             e.preventDefault();
             const un = document.getElementById('usr_username').value.trim();
-            // التحقق من عدم تكرار اسم المستخدم
             if(db.users.find(u => u.username.toLowerCase() === un.toLowerCase())) {
                 showToast('اسم المستخدم موجود مسبقاً، اختر اسماً آخر', 'error');
                 return;
@@ -2079,7 +2121,6 @@
         }
 
         function seedDB() {
-            // Seed DB now only initializes basics if completely empty
             if(!db.elementTypes) db.elementTypes = [];
             if(!db.employees) db.employees = [];
             if(!db.elements) db.elements = [];
