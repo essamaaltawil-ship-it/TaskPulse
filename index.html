@@ -63,6 +63,8 @@
         .form-input { width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; background-color: white; color: #111827; }
         .dark .form-input { background-color: #374151; border-color: #4b5563; color: white; }
         .form-input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 1px #3b82f6; }
+        .form-input:disabled { background-color: #e5e7eb; color: #6b7280; cursor: not-allowed; }
+        .dark .form-input:disabled { background-color: #4b5563; color: #9ca3af; }
         .header-input { width: 100%; padding: 0.25rem; border: 1px solid #d1d5db; border-radius: 0.25rem; font-weight: normal; margin-top: 0.25rem; color: #111827; font-size: 0.75rem; }
         .dark .header-input { background-color: #374151; border-color: #4b5563; color: white; }
         details.filter-dropdown summary { list-style: none; }
@@ -147,7 +149,7 @@
         </nav>
         <div class="p-4 border-t border-blue-800 text-sm text-center text-blue-300 flex justify-center items-center gap-2 font-bold">
             <span class="w-2 h-2 rounded-full bg-green-400 animate-pulse" id="sidebar-sync-indicator"></span>
-            الإصدار 1.8.2 (Stable Base)
+            الإصدار 1.9.0 (Advanced RBAC)
         </div>
     </aside>
 
@@ -844,7 +846,14 @@
             const v = document.getElementById('view-dashboard');
             
             const isAdmin = window.activeSessionUser && window.activeSessionUser.role === 'admin';
+            const canAssignOthers = window.activeSessionUser && window.activeSessionUser.canAssignOthers;
             const myEmpId = window.getCurrentEmployeeId();
+
+            let visibleEmps = window.db.employees.filter(e => !e.isDeleted && e.status === 'نشط');
+            if (!isAdmin && !canAssignOthers) {
+                visibleEmps = visibleEmps.filter(e => e.id === myEmpId);
+            }
+            const activeEmpCount = visibleEmps.length;
 
             const myReqs = isAdmin ? window.db.requirements : window.db.requirements.filter(r => r.employeeId === myEmpId);
             const myTasksIds = [...new Set(myReqs.map(r => r.taskId))];
@@ -852,7 +861,6 @@
             const myAssigns = isAdmin ? window.db.assignments : window.db.assignments.filter(a => a.employeeId === myEmpId && a.status === 'نشط');
             const myElementIds = [...new Set(myAssigns.map(a => a.elementId))];
             
-            const activeEmp = window.db.employees.filter(e => !e.isDeleted && e.status === 'نشط').length;
             const activeElements = isAdmin ? window.db.elements.filter(e => e.status === 'نشط').length : myElementIds.length;
             const openTasks = myTasks.filter(t => ['جديدة','قيد التنفيذ','بانتظار متطلبات'].includes(t.status)).length;
             const lateTasks = myTasks.filter(t => ['جديدة','قيد التنفيذ','بانتظار متطلبات'].includes(t.status) && new Date(t.dueDate) < new Date()).length;
@@ -900,8 +908,8 @@
             }
 
             v.innerHTML = '<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">' +
-                '<div onclick="window.nav(\'employees\')" class="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition transform hover:-translate-y-1 bg-white dark:bg-darkcard p-4 rounded-lg shadow border-r-4 border-blue-500 flex items-center justify-between">' +
-                    '<div><p class="text-gray-500 dark:text-gray-400 text-sm">الموظفون النشطون</p><h3 class="text-2xl font-bold dark:text-white">' + activeEmp + '</h3></div>' +
+                '<div onclick="' + (isAdmin ? 'window.nav(\'employees\')' : '') + '" class="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition transform hover:-translate-y-1 bg-white dark:bg-darkcard p-4 rounded-lg shadow border-r-4 border-blue-500 flex items-center justify-between">' +
+                    '<div><p class="text-gray-500 dark:text-gray-400 text-sm">الموظفون النشطون</p><h3 class="text-2xl font-bold dark:text-white">' + activeEmpCount + '</h3></div>' +
                     '<div class="text-blue-500 bg-blue-100 dark:bg-blue-900 p-3 rounded-full"><i class="fas fa-users"></i></div>' +
                 '</div>' +
                 '<div onclick="window.nav(\'elements\')" class="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition transform hover:-translate-y-1 bg-white dark:bg-darkcard p-4 rounded-lg shadow border-r-4 border-indigo-500 flex items-center justify-between">' +
@@ -920,7 +928,7 @@
                     '<div><p class="text-gray-500 dark:text-gray-400 text-sm">المتطلبات المفتوحة</p><h3 class="text-2xl font-bold dark:text-white">' + openReqs + '</h3></div>' +
                     '<div class="text-yellow-500 bg-yellow-100 dark:bg-yellow-900 p-3 rounded-full"><i class="fas fa-list"></i></div>' +
                 '</div>' +
-                '<div onclick="window.nav(\'handovers\')" class="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition transform hover:-translate-y-1 bg-white dark:bg-darkcard p-4 rounded-lg shadow border-r-4 border-purple-500 flex items-center justify-between">' +
+                '<div class="' + (isAdmin ? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition transform hover:-translate-y-1' : '') + ' bg-white dark:bg-darkcard p-4 rounded-lg shadow border-r-4 border-purple-500 flex items-center justify-between">' +
                     '<div><p class="text-gray-500 dark:text-gray-400 text-sm">تسليم واستلام مفتوح</p><h3 class="text-2xl font-bold dark:text-white">' + openHandovers + '</h3></div>' +
                     '<div class="text-purple-500 bg-purple-100 dark:bg-purple-900 p-3 rounded-full"><i class="fas fa-exchange-alt"></i></div>' +
                 '</div>' +
@@ -939,12 +947,13 @@
             let emps = window.db.employees.filter(e => !e.isDeleted);
             
             let rowsHTML = emps.map(e => {
-                let badge = e.status === 'نشط' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
+                let badge = e.status === 'نشط' ? 'bg-green-100 text-green-800' : e.status === 'موقوف' ? 'bg-gray-200 text-gray-800' : 'bg-red-100 text-red-800';
                 return '<tr class="hover:bg-gray-50 dark:hover:bg-gray-700">' +
                     '<td class="px-4 py-3">' + e.code + '</td><td class="px-4 py-3 font-medium">' + e.name + '</td>' +
                     '<td class="px-4 py-3">' + e.title + '</td><td class="px-4 py-3">' + e.department + '</td>' +
                     '<td class="px-4 py-3"><span class="px-2 py-1 text-xs rounded-full ' + badge + '">' + e.status + '</span></td>' +
-                    '<td class="px-4 py-3 flex gap-2">' +
+                    '<td class="px-4 py-3 flex gap-3 justify-end">' +
+                        '<button onclick="window.printReport(\'employee\', \'' + e.id + '\')" class="text-green-600 hover:text-green-800 bg-green-50 px-2 py-1 rounded text-xs font-bold shadow-sm" title="طباعة عهدة ومهام الموظف"><i class="fas fa-print ml-1"></i> تقرير</button>' +
                         '<button onclick="window.openEmployeeForm(\'' + e.id + '\')" class="text-blue-500 hover:text-blue-700" title="تعديل"><i class="fas fa-edit"></i></button>' +
                     '</td>' +
                 '</tr>';
@@ -957,7 +966,7 @@
             '<div class="bg-white dark:bg-darkcard rounded-lg shadow overflow-x-auto">' +
                 '<table class="min-w-full text-right" id="emp-table">' +
                     '<thead class="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200">' +
-                        '<tr><th class="px-4 py-3">الرقم</th><th class="px-4 py-3">الاسم</th><th class="px-4 py-3">المسمى</th><th class="px-4 py-3">القسم</th><th class="px-4 py-3">الحالة</th><th class="px-4 py-3">إجراءات</th></tr>' +
+                        '<tr><th class="px-4 py-3">الرقم</th><th class="px-4 py-3">الاسم</th><th class="px-4 py-3">المسمى</th><th class="px-4 py-3">القسم</th><th class="px-4 py-3">الحالة</th><th class="px-4 py-3 text-center">إجراءات</th></tr>' +
                     '</thead>' +
                     '<tbody class="divide-y divide-gray-200 dark:divide-gray-700 dark:text-gray-300">' + rowsHTML + '</tbody>' +
                 '</table>' +
@@ -977,9 +986,10 @@
                     '<div><label class="block text-sm mb-1 dark:text-gray-300">الاسم</label><input type="text" id="ef_name" value="' + (e.name||'') + '" required class="form-input"></div>' +
                     '<div><label class="block text-sm mb-1 dark:text-gray-300">المسمى الوظيفي</label><input type="text" id="ef_title" value="' + (e.title||'') + '" class="form-input"></div>' +
                     '<div><label class="block text-sm mb-1 dark:text-gray-300">القسم</label><input type="text" id="ef_dept" value="' + (e.department||'') + '" class="form-input"></div>' +
-                    '<div><label class="block text-sm mb-1 dark:text-gray-300">الحالة</label><select id="ef_status" class="form-input">' +
+                    '<div><label class="block text-sm mb-1 dark:text-gray-300">الحالة</label><select id="ef_status" class="form-input font-bold">' +
                         '<option ' + (e.status==='نشط'?'selected':'') + '>نشط</option>' +
                         '<option ' + (e.status==='إجازة'?'selected':'') + '>إجازة</option>' +
+                        '<option value="موقوف" ' + (e.status==='موقوف'?'selected':'') + ' class="text-red-600">موقوف (لا يسند له مهام)</option>' +
                     '</select></div>' +
                     '<div class="md:col-span-2 flex justify-end gap-2 mt-4"><button type="submit" class="px-4 py-2 bg-primary text-white rounded hover:bg-blue-800">حفظ</button></div>' +
                 '</form>' +
@@ -1181,45 +1191,65 @@
 
         window.renderAssignments = function() {
             const v = document.getElementById('view-assignments');
-            
-            let rowsHTML = window.db.assignments.filter(a => a.status === 'نشط').map(a => {
-                const empObj = window.db.employees.find(e => e.id === a.employeeId);
-                const emp = empObj ? empObj.name : 'مجهول';
-                const elObj = window.db.elements.find(e => e.id === a.elementId);
-                const el = elObj ? elObj.name : 'مجهول';
-                return '<tr>' +
-                    '<td class="px-3 py-2 font-bold">' + emp + '</td><td class="px-3 py-2">' + el + '</td><td class="px-3 py-2">' + a.startDate + '</td>' +
-                    '<td class="px-3 py-2"><button onclick="window.closeAssignment(\'' + a.id + '\')" class="text-red-500 hover:text-red-700 text-xs bg-red-50 dark:bg-red-900 px-2 py-1 rounded">إنهاء</button></td>' +
-                '</tr>';
-            }).join('');
-
             v.innerHTML = '<div class="flex justify-between items-center mb-4">' +
                 '<button onclick="window.openAssignForm()" class="bg-indigo-600 hover:bg-indigo-800 text-white px-4 py-2 rounded shadow transition"><i class="fas fa-link ml-2"></i> إسناد جديد</button>' +
+                '<input type="text" id="assign-search" placeholder="بحث في الإسنادات والعهد..." class="form-input w-64 border-indigo-200" onkeyup="window.filterAssignments()">' +
             '</div>' +
             '<div class="bg-white dark:bg-darkcard rounded-lg shadow overflow-x-auto p-4">' +
                 '<table class="min-w-full text-right text-sm">' +
                     '<thead class="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200">' +
-                        '<tr><th class="px-3 py-2">الموظف</th><th class="px-3 py-2">العنصر</th><th class="px-3 py-2">البداية</th><th class="px-3 py-2">إجراء</th></tr>' +
+                        '<tr><th class="px-3 py-2">الموظف</th><th class="px-3 py-2">العنصر (العهدة)</th><th class="px-3 py-2">البداية</th><th class="px-3 py-2">إجراء</th></tr>' +
                     '</thead>' +
-                    '<tbody class="divide-y divide-gray-200 dark:divide-gray-700 dark:text-gray-300">' + rowsHTML + '</tbody>' +
+                    '<tbody id="assignments-tbody" class="divide-y divide-gray-200 dark:divide-gray-700 dark:text-gray-300"></tbody>' +
                 '</table>' +
             '</div>';
+            window.filterAssignments();
+        };
+
+        window.filterAssignments = function() {
+            const searchEl = document.getElementById('assign-search');
+            const search = searchEl ? searchEl.value.toLowerCase() : '';
+            const tbody = document.getElementById('assignments-tbody');
+            if(!tbody) return;
+
+            let filtered = window.db.assignments.filter(a => a.status === 'نشط');
+
+            let rowsHTML = filtered.map(a => {
+                const empObj = window.db.employees.find(e => e.id === a.employeeId);
+                const emp = empObj ? empObj.name : 'مجهول';
+                const elObj = window.db.elements.find(e => e.id === a.elementId);
+                const el = elObj ? elObj.name : 'مجهول';
+                
+                if(search && !emp.toLowerCase().includes(search) && !el.toLowerCase().includes(search) && !a.startDate.includes(search)) {
+                    return '';
+                }
+
+                return '<tr>' +
+                    '<td class="px-3 py-2 font-bold text-blue-800 dark:text-blue-300">' + emp + '</td>' +
+                    '<td class="px-3 py-2">' + el + '</td>' +
+                    '<td class="px-3 py-2 text-gray-500" dir="ltr">' + a.startDate + '</td>' +
+                    '<td class="px-3 py-2"><button onclick="window.closeAssignment(\'' + a.id + '\')" class="text-red-500 hover:text-red-700 text-xs bg-red-50 dark:bg-red-900 px-3 py-1 rounded shadow-sm font-bold">إنهاء العهدة</button></td>' +
+                '</tr>';
+            }).join('');
+            
+            tbody.innerHTML = rowsHTML || '<tr><td colspan="4" class="text-center py-4 text-gray-500">لا توجد إسنادات مطابقة للبحث</td></tr>';
         };
 
         window.openAssignForm = function() {
-            let empsOpts = window.db.employees.filter(e => !e.isDeleted).map(e => '<option value="' + e.id + '">' + e.name + '</option>').join('');
+            // تصفية الموظفين: الموقوفون لا يظهرون
+            let empsOpts = window.db.employees.filter(e => !e.isDeleted && e.status !== 'موقوف').map(e => '<option value="' + e.id + '">' + e.name + '</option>').join('');
             let elsOpts = window.db.elements.filter(e => e.status === 'نشط').map(e => '<option value="' + e.id + '">' + e.name + '</option>').join('');
             
             let html = '<div class="p-4 border-b dark:border-gray-700 flex justify-between items-center flex-shrink-0">' +
-                '<h3 class="text-lg font-bold dark:text-white">إسناد عناصر</h3>' +
+                '<h3 class="text-lg font-bold dark:text-white">إسناد عناصر (عهد جديدة)</h3>' +
                 '<button onclick="window.closeModal(\'assignModal\')" class="text-gray-500 hover:text-red-500"><i class="fas fa-times text-xl"></i></button>' +
             '</div>' +
             '<div class="p-4 overflow-y-auto flex-1">' +
                 '<form onsubmit="window.saveAssignment(event)" class="space-y-4">' +
-                    '<div><label class="block text-sm mb-1 dark:text-gray-300">الموظف المستلم</label><select id="asf_emp" class="form-input" required><option value="">اختر موظف...</option>' + empsOpts + '</select></div>' +
+                    '<div><label class="block text-sm mb-1 dark:text-gray-300">الموظف المستلم</label><select id="asf_emp" class="form-input font-bold" required><option value="">اختر موظف...</option>' + empsOpts + '</select></div>' +
                     '<div><label class="block text-sm mb-1 dark:text-gray-300">العناصر (اختر أكثر من واحد بـ Ctrl)</label><select id="asf_els" class="form-input h-32" multiple required>' + elsOpts + '</select></div>' +
                     '<div><label class="block text-sm mb-1 dark:text-gray-300">تاريخ البداية</label><input type="date" id="asf_start" required class="form-input" value="' + new Date().toISOString().split('T')[0] + '"></div>' +
-                    '<div class="flex justify-end gap-2 mt-4"><button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-800">حفظ الإسناد</button></div>' +
+                    '<div class="flex justify-end gap-2 mt-4"><button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-800 font-bold shadow">حفظ الإسناد والعهدة</button></div>' +
                 '</form>' +
             '</div>';
             window.openModal('assignModal', html);
@@ -1358,7 +1388,7 @@
                 
                 const lateClass = new Date(t.dueDate) < new Date() && t.status !== 'مقفلة' ? 'text-red-500 font-bold' : '';
                 
-                let actionsHTML = '<button onclick="window.viewTaskDetails(\'' + t.id + '\')" class="text-blue-500 hover:text-blue-700 text-sm bg-blue-50 dark:bg-blue-900 px-2 py-1 rounded font-bold shadow-sm">إدارة المهمة</button>';
+                let actionsHTML = '<button onclick="window.viewTaskDetails(\'' + t.id + '\')" class="text-blue-500 hover:text-blue-700 text-sm bg-blue-50 dark:bg-blue-900 px-2 py-1 rounded font-bold shadow-sm border border-blue-200">إدارة المهمة</button>';
                 if(isAdmin) {
                     actionsHTML += '<button onclick="window.openTaskForm(\'' + t.id + '\')" class="text-gray-500 hover:text-gray-700 ml-2"><i class="fas fa-edit"></i></button>' +
                     '<button onclick="window.deleteTask(\'' + t.id + '\')" class="text-red-500 hover:text-red-700 ml-2"><i class="fas fa-trash"></i></button>';
@@ -1409,7 +1439,7 @@
                     '<div><label class="block text-sm mb-1 dark:text-gray-300">تاريخ الاستحقاق</label><input type="date" id="tk_due" value="' + (t.dueDate||'') + '" required class="form-input"></div>' +
                     '<div><label class="block text-sm mb-1 dark:text-gray-300">الحالة</label><select id="tk_status" class="form-input">' + statusSelect + '</select></div>' +
                     '<div class="md:col-span-2"><label class="block text-sm mb-1 dark:text-gray-300">الوصف</label><textarea id="tk_desc" class="form-input h-24">' + (t.description||'') + '</textarea></div>' +
-                    '<div class="md:col-span-2 flex justify-end gap-2 mt-4"><button type="submit" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-800">حفظ المهمة</button></div>' +
+                    '<div class="md:col-span-2 flex justify-end gap-2 mt-4"><button type="submit" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-800 font-bold shadow">حفظ المهمة</button></div>' +
                 '</form>' +
             '</div>';
             window.openModal('taskModal', html);
@@ -1445,11 +1475,28 @@
 
         window.renderRequirements = function() {
             const v = document.getElementById('view-requirements');
-            let tasksOpts = window.db.tasks.map(t => '<option value="' + t.id + '">' + t.title + '</option>').join('');
-            let empOpts = window.db.employees.filter(e => !e.isDeleted).map(e => '<option value="' + e.id + '">' + e.name + '</option>').join('');
+            
+            const isAdmin = window.activeSessionUser && window.activeSessionUser.role === 'admin';
+            const canAssignOthers = window.activeSessionUser && window.activeSessionUser.canAssignOthers;
+            const myEmpId = window.getCurrentEmployeeId();
+            
+            // عزل المهام في الفلتر: عرض فقط المهام المرتبطة بالموظف
+            let availableTasks = window.db.tasks;
+            if (!isAdmin && !canAssignOthers) {
+                const myTaskIds = window.db.requirements.filter(r => r.employeeId === myEmpId).map(r => r.taskId);
+                availableTasks = window.db.tasks.filter(t => myTaskIds.includes(t.id));
+            }
+            let tasksOpts = availableTasks.map(t => '<option value="' + t.id + '">' + t.title + '</option>').join('');
+            
+            // عزل الموظفين في الفلتر
+            let availableEmps = window.db.employees.filter(e => !e.isDeleted);
+            if (!isAdmin && !canAssignOthers) {
+                availableEmps = availableEmps.filter(e => e.id === myEmpId);
+            }
+            let empOpts = availableEmps.map(e => '<option value="' + e.id + '">' + e.name + '</option>').join('');
 
             v.innerHTML = '<div class="flex flex-wrap justify-between items-center mb-4 gap-2">' +
-                '<button onclick="window.openReqForm()" class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded shadow transition"><i class="fas fa-plus ml-2"></i> متطلب جديد</button>' +
+                '<button onclick="window.openReqForm()" class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded shadow transition font-bold"><i class="fas fa-plus ml-2"></i> متطلب جديد</button>' +
             '</div>' +
             '<div class="bg-white dark:bg-darkcard rounded-lg shadow overflow-x-auto min-h-[400px]">' +
                 '<table class="min-w-full text-right text-sm">' +
@@ -1523,6 +1570,7 @@
             const selectedStatuses = window.getCheckedValues('filter-status-req');
 
             const isAdmin = window.activeSessionUser && window.activeSessionUser.role === 'admin';
+            const canAssignOthers = window.activeSessionUser && window.activeSessionUser.canAssignOthers;
             const myEmpId = window.getCurrentEmployeeId();
 
             let filtered = window.db.requirements.filter(r => {
@@ -1533,7 +1581,7 @@
                        (selectedStatuses.length === 0 || selectedStatuses.includes(r.status));
             });
 
-            if (!isAdmin) {
+            if (!isAdmin && !canAssignOthers) {
                 filtered = filtered.filter(r => r.employeeId === myEmpId);
             }
 
@@ -1589,8 +1637,26 @@
             let r = id ? window.db.requirements.find(x => x.id === id) : { isMandatory: true, status: 'جديد', updates: [] };
             if(!r.updates) r.updates = []; 
 
-            let tasksOpts = window.db.tasks.map(t => '<option value="' + t.id + '" ' + (r.taskId===t.id?'selected':'') + '>' + t.title + '</option>').join('');
-            let empsOpts = window.db.employees.filter(e => !e.isDeleted).map(e => '<option value="' + e.id + '" ' + (r.employeeId===e.id?'selected':'') + '>' + e.name + '</option>').join('');
+            const isAdmin = window.activeSessionUser && window.activeSessionUser.role === 'admin';
+            const canAssignOthers = window.activeSessionUser && window.activeSessionUser.canAssignOthers;
+            const myEmpId = window.getCurrentEmployeeId();
+
+            // عزل المهام: عند إضافة متطلب جديد، يعرض للموظف فقط المهام التي هو فيها مسبقاً
+            let allowedTasks = window.db.tasks;
+            if (!isAdmin) {
+                const myTaskIds = window.db.requirements.filter(req => req.employeeId === myEmpId).map(req => req.taskId);
+                allowedTasks = window.db.tasks.filter(t => myTaskIds.includes(t.id));
+            }
+            let tasksOpts = allowedTasks.map(t => '<option value="' + t.id + '" ' + (r.taskId===t.id?'selected':'') + '>' + t.title + '</option>').join('');
+            
+            // عزل الموظفين وتجاهل الموقوفين
+            let allowedEmps = window.db.employees.filter(e => !e.isDeleted && e.status !== 'موقوف');
+            if (!isAdmin && !canAssignOthers) {
+                allowedEmps = window.db.employees.filter(e => e.id === myEmpId);
+            }
+            let empsOpts = allowedEmps.map(e => '<option value="' + e.id + '" ' + (r.employeeId===e.id?'selected':'') + '>' + e.name + '</option>').join('');
+            
+            const empSelectDisabled = (!isAdmin && !canAssignOthers) ? 'disabled' : '';
             
             let updatesSectionHTML = '';
             if(id) {
@@ -1656,12 +1722,11 @@
             }
 
             let formHTML = '';
-            const isAdmin = window.activeSessionUser && window.activeSessionUser.role === 'admin';
             if (isAdmin || !id) {
                 formHTML = '<form onsubmit="window.saveReq(event, \'' + id + '\')" class="grid grid-cols-1 md:grid-cols-2 gap-4">' +
                     '<div class="md:col-span-2"><label class="block text-sm mb-1 dark:text-gray-300">المهمة الأم</label><select id="rq_task" required class="form-input font-bold text-primary">' + tasksOpts + '</select></div>' +
                     '<div class="md:col-span-2"><label class="block text-sm mb-1 dark:text-gray-300">وصف المتطلب (العنوان)</label><input type="text" id="rq_title" value="' + (r.title||'') + '" required class="form-input font-bold"></div>' +
-                    '<div><label class="block text-sm mb-1 dark:text-gray-300">الموظف المسؤول</label><select id="rq_emp" required class="form-input">' + empsOpts + '</select></div>' +
+                    '<div><label class="block text-sm mb-1 dark:text-gray-300">الموظف المسؤول</label><select id="rq_emp" required class="form-input" ' + empSelectDisabled + '>' + empsOpts + '</select></div>' +
                     '<div><label class="block text-sm mb-1 dark:text-gray-300">تاريخ الاستحقاق</label><input type="date" id="rq_due" value="' + (r.dueDate||'') + '" required class="form-input"></div>' +
                     '<div><label class="block text-sm mb-1 dark:text-gray-300">الحالة</label><select id="rq_status" class="form-input font-bold text-blue-700">' +
                         '<option ' + (r.status==='جديد'?'selected':'') + '>جديد</option>' +
@@ -1700,10 +1765,17 @@
 
         window.saveReq = function(e, id) {
             e.preventDefault();
+            const isAdmin = window.activeSessionUser && window.activeSessionUser.role === 'admin';
+            const canAssignOthers = window.activeSessionUser && window.activeSessionUser.canAssignOthers;
+            
+            // إذا كان الموظف مغلق القائمة، نأخذ رقمه الإجباري، وإلا نقرأ من القائمة
+            const empField = document.getElementById('rq_emp');
+            const finalEmpId = (!isAdmin && !canAssignOthers) ? window.getCurrentEmployeeId() : empField.value;
+
             const data = {
                 taskId: document.getElementById('rq_task').value,
                 title: document.getElementById('rq_title').value,
-                employeeId: document.getElementById('rq_emp').value,
+                employeeId: finalEmpId,
                 dueDate: document.getElementById('rq_due').value,
                 status: document.getElementById('rq_status').value,
                 isMandatory: document.getElementById('rq_mand').value === 'true',
@@ -1997,30 +2069,45 @@
                         const tObj = window.db.elementTypes.find(t=>t.id===elObj.typeId);
                         tName = tObj ? tObj.name : '';
                     }
-                    return '<tr><td>' + (elObj?.code||'') + '</td><td style="font-weight:bold;">' + (elObj?.name||'') + '</td><td>' + tName + '</td><td dir="ltr">' + a.startDate + '</td></tr>';
+                    return '<tr style="page-break-inside: avoid;"><td style="padding: 4px; border: 1px solid #000;">' + (elObj?.code||'') + '</td><td style="font-weight:bold; padding: 4px; border: 1px solid #000;">' + (elObj?.name||'') + '</td><td style="padding: 4px; border: 1px solid #000;">' + tName + '</td><td dir="ltr" style="padding: 4px; border: 1px solid #000;">' + a.startDate + '</td></tr>';
                 }).join('');
 
                 let reqsHTML = reqs.map(r => {
                     const tObj = window.db.tasks.find(t=>t.id===r.taskId);
                     const tName = tObj ? tObj.title : '';
-                    return '<tr><td style="font-weight:bold;">' + r.title + '</td><td>' + tName + '</td><td dir="ltr" style="color:red; font-weight:bold;">' + r.dueDate + '</td><td>' + r.status + '</td></tr>';
+                    return '<tr style="page-break-inside: avoid;"><td style="font-weight:bold; padding: 4px; border: 1px solid #000;">' + r.title + '</td><td style="padding: 4px; border: 1px solid #000;">' + tName + '</td><td dir="ltr" style="color:red; font-weight:bold; padding: 4px; border: 1px solid #000;">' + r.dueDate + '</td><td style="padding: 4px; border: 1px solid #000;">' + r.status + '</td></tr>';
                 }).join('');
 
-                html = '<div class="print-card">' +
-                    '<h1 style="text-align:center; margin-bottom: 15px; color:#000; font-size: 18px;">تقرير بيانات الموظف والعهد</h1>' +
-                    '<table class="print-table" style="margin-bottom: 15px;">' +
-                        '<tr><th style="background:#e5e7eb; width:15%;">الاسم</th><td style="font-weight:bold; width:35%;">' + emp.name + '</td><th style="background:#e5e7eb; width:15%;">الرقم</th><td style="width:35%;">' + emp.code + '</td></tr>' +
-                        '<tr><th style="background:#e5e7eb;">القسم</th><td>' + emp.department + '</td><th style="background:#e5e7eb;">المسمى</th><td>' + emp.title + '</td></tr>' +
+                html = '<div style="width: 100%; margin: 0; padding: 0; font-family: \'Tajawal\', Arial, sans-serif; direction: rtl; font-size: 11px;">' +
+                    '<div style="text-align:center; border-bottom: 2px solid #000; padding-bottom: 5px; margin-bottom: 10px;">' +
+                        '<h1 style="margin: 0; font-size: 18px; font-weight: 900;">تقرير الأصول والمتطلبات للموظف</h1>' +
+                        '<p style="margin: 3px 0 0 0; font-size: 10px; color: #333;">تاريخ الاستخراج: ' + new Date().toLocaleString('ar-SA') + ' | نظام الإدارة المالية ERP</p>' +
+                    '</div>' +
+                    '<table style="width: 100%; border-collapse: collapse; margin-bottom: 15px; border: 2px solid #000; font-size: 12px;">' +
+                        '<tr>' +
+                            '<td style="width: 15%; border: 1px solid #000; padding: 5px; background-color: #f3f4f6; font-weight: bold;">الاسم:</td>' +
+                            '<td style="width: 35%; border: 1px solid #000; padding: 5px; font-weight: 900;">' + emp.name + '</td>' +
+                            '<td style="width: 15%; border: 1px solid #000; padding: 5px; background-color: #f3f4f6; font-weight: bold;">الرقم:</td>' +
+                            '<td style="width: 35%; border: 1px solid #000; padding: 5px; font-weight: bold;">' + emp.code + '</td>' +
+                        '</tr>' +
+                        '<tr>' +
+                            '<td style="border: 1px solid #000; padding: 5px; background-color: #f3f4f6; font-weight: bold;">القسم:</td>' +
+                            '<td style="border: 1px solid #000; padding: 5px;">' + emp.department + '</td>' +
+                            '<td style="border: 1px solid #000; padding: 5px; background-color: #f3f4f6; font-weight: bold;">المسمى / الحالة:</td>' +
+                            '<td style="border: 1px solid #000; padding: 5px;">' + emp.title + ' / ' + emp.status + '</td>' +
+                        '</tr>' +
                     '</table>' +
-                    '<div style="font-weight: bold; border-bottom: 2px solid #000; padding-bottom: 2px; margin-bottom: 5px;">العناصر المسندة حالياً (' + assigns.length + ')</div>' +
-                    '<table class="print-table" style="margin-bottom: 15px;">' +
-                        '<tr style="background:#e5e7eb;"><th>كود العنصر</th><th>الاسم</th><th>النوع</th><th>تاريخ الإسناد</th></tr>' +
-                        assignsHTML +
+                    
+                    '<div style="font-weight: 900; font-size: 13px; background: #1f2937; color: #fff; padding: 4px; text-align: center; border: 2px solid #000; border-bottom: none;">العناصر والأصول المسندة حالياً (' + assigns.length + ')</div>' +
+                    '<table style="width: 100%; border-collapse: collapse; border: 2px solid #000; margin-bottom: 15px; font-size: 11px;">' +
+                        '<tr style="background:#e2e8f0; font-weight: bold;"><th style="padding: 4px; border: 1px solid #000;">كود العنصر</th><th style="padding: 4px; border: 1px solid #000;">الاسم</th><th style="padding: 4px; border: 1px solid #000;">النوع</th><th style="padding: 4px; border: 1px solid #000;">تاريخ الإسناد</th></tr>' +
+                        (assignsHTML || '<tr><td colspan="4" style="text-align:center; padding:5px; color:#555;">لا توجد عناصر مسندة.</td></tr>') +
                     '</table>' +
-                    '<div style="font-weight: bold; border-bottom: 2px solid #000; padding-bottom: 2px; margin-bottom: 5px;">المتطلبات المفتوحة في ذمته (' + reqs.length + ')</div>' +
-                    '<table class="print-table">' +
-                        '<tr style="background:#e5e7eb;"><th>وصف المتطلب</th><th>المهمة الأم (المشروع)</th><th>الديدلاين</th><th>الحالة</th></tr>' +
-                        reqsHTML +
+                    
+                    '<div style="font-weight: 900; font-size: 13px; background: #1f2937; color: #fff; padding: 4px; text-align: center; border: 2px solid #000; border-bottom: none;">المهام والمتطلبات المفتوحة في عهدته (' + reqs.length + ')</div>' +
+                    '<table style="width: 100%; border-collapse: collapse; border: 2px solid #000; font-size: 11px;">' +
+                        '<tr style="background:#e2e8f0; font-weight: bold;"><th style="padding: 4px; border: 1px solid #000;">وصف المتطلب</th><th style="padding: 4px; border: 1px solid #000;">المهمة الأم (المشروع)</th><th style="padding: 4px; border: 1px solid #000;">الاستحقاق</th><th style="padding: 4px; border: 1px solid #000;">الحالة</th></tr>' +
+                        (reqsHTML || '<tr><td colspan="4" style="text-align:center; padding:5px; color:#555;">لا توجد متطلبات مفتوحة.</td></tr>') +
                     '</table>' +
                 '</div>';
 
@@ -2132,11 +2219,12 @@
             let usersRowsHTML = window.db.users.map(u => {
                 let badge = u.role === 'admin' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700';
                 let roleText = u.role === 'admin' ? 'مدير نظام (Admin)' : 'موظف (User)';
+                let assignBadge = u.canAssignOthers ? '<i class="fas fa-check-circle text-green-500 mr-1" title="يملك صلاحية الإسناد لغيره"></i>' : '';
                 return '<tr class="hover:bg-gray-50 dark:hover:bg-gray-600">' +
                     '<td class="px-4 py-2 font-bold">' + u.name + '</td>' +
                     '<td class="px-4 py-2 font-mono text-blue-600 dark:text-blue-400" dir="ltr">' + u.username + '</td>' +
                     '<td class="px-4 py-2 font-mono text-gray-500" dir="ltr">' + u.password + '</td>' +
-                    '<td class="px-4 py-2"><span class="px-2 py-0.5 rounded text-xs font-bold ' + badge + '">' + roleText + '</span></td>' +
+                    '<td class="px-4 py-2"><span class="px-2 py-0.5 rounded text-xs font-bold ' + badge + '">' + roleText + '</span> ' + assignBadge + '</td>' +
                     '<td class="px-4 py-2 text-center flex justify-center gap-2">' +
                         '<button onclick="window.openUserForm(\'' + u.id + '\')" class="text-blue-500 hover:text-blue-700" title="تعديل الحساب"><i class="fas fa-edit"></i></button>' +
                         '<button onclick="window.deleteSystemUser(\'' + u.id + '\')" class="text-red-500 hover:text-red-700" title="حذف الحساب"><i class="fas fa-trash"></i></button>' +
@@ -2202,8 +2290,9 @@
         };
 
         window.openUserForm = function(id = null) {
-            let u = id ? window.db.users.find(x => x.id === id) : { role: 'user' };
+            let u = id ? window.db.users.find(x => x.id === id) : { role: 'user', assignmentScope: 'self', specificAssignees: [] };
             let empsOpts = window.db.employees.filter(e => !e.isDeleted).map(e => '<option value="' + e.id + '" ' + (u.employeeId === e.id ? 'selected' : '') + '>' + e.name + '</option>').join('');
+            let allEmpsMultiOpts = window.db.employees.filter(e => !e.isDeleted).map(e => '<option value="' + e.id + '" ' + ((u.specificAssignees||[]).includes(e.id) ? 'selected' : '') + '>' + e.name + '</option>').join('');
 
             let html = '<div class="p-4 border-b dark:border-gray-700 flex justify-between items-center flex-shrink-0 bg-gray-50 dark:bg-gray-800 rounded-t-xl">' +
                 '<h3 class="text-lg font-bold dark:text-white"><i class="fas ' + (id ? 'fa-user-edit' : 'fa-user-plus') + ' text-blue-500 ml-2"></i> ' + (id ? 'تعديل بيانات الحساب' : 'إنشاء حساب دخول جديد') + '</h3>' +
@@ -2221,7 +2310,6 @@
                             '<option value="">-- غير مرتبط بموظف (مدير نظام فقط) --</option>' +
                             empsOpts +
                         '</select>' +
-                        '<p class="text-xs text-gray-500 mt-1">يجب اختيار الموظف حتى يستطيع رؤية مهامه والعهدة المسندة إليه.</p>' +
                     '</div>' +
                     '<div class="grid grid-cols-2 gap-4">' +
                         '<div>' +
@@ -2233,12 +2321,26 @@
                             '<input type="text" id="usr_password" required class="form-input" dir="ltr" value="' + (u.password || '') + '" placeholder="password123">' +
                         '</div>' +
                     '</div>' +
+                    '<hr class="my-4 border-gray-200 dark:border-gray-700">' +
                     '<div>' +
-                        '<label class="block text-sm font-bold mb-1 dark:text-gray-300">الصلاحية</label>' +
+                        '<label class="block text-sm font-bold mb-1 dark:text-gray-300">صلاحية إدارة النظام</label>' +
                         '<select id="usr_role" class="form-input font-bold">' +
-                            '<option value="user" ' + (u.role === 'user' ? 'selected' : '') + '>موظف (لا يرى الإعدادات، يرى مهامه فقط)</option>' +
+                            '<option value="user" ' + (u.role === 'user' ? 'selected' : '') + '>موظف (لا يرى الإعدادات)</option>' +
                             '<option value="admin" ' + (u.role === 'admin' ? 'selected' : '') + '>مدير نظام (صلاحيات كاملة لكل شيء)</option>' +
                         '</select>' +
+                    '</div>' +
+                    '<div>' +
+                        '<label class="block text-sm font-bold mb-1 dark:text-gray-300 text-indigo-600">صلاحية إسناد المتطلبات والمهام (للموظف)</label>' +
+                        '<select id="usr_scope" class="form-input font-bold" onchange="document.getElementById(\'specific_emps_div\').style.display = this.value === \'specific\' ? \'block\' : \'none\'">' +
+                            '<option value="self" ' + (u.assignmentScope === 'self' || !u.assignmentScope ? 'selected' : '') + '>لنفسه فقط (إجباري)</option>' +
+                            '<option value="all" ' + (u.assignmentScope === 'all' ? 'selected' : '') + '>لجميع الموظفين</option>' +
+                            '<option value="specific" ' + (u.assignmentScope === 'specific' ? 'selected' : '') + '>لموظفين محددين...</option>' +
+                        '</select>' +
+                    '</div>' +
+                    '<div id="specific_emps_div" style="display: ' + (u.assignmentScope === 'specific' ? 'block' : 'none') + ';">' +
+                        '<label class="block text-sm font-bold mb-1 dark:text-gray-300">اختر الموظفين المسموح له الإسناد إليهم</label>' +
+                        '<select id="usr_specific" class="form-input h-24" multiple>' + allEmpsMultiOpts + '</select>' +
+                        '<p class="text-xs text-gray-500 mt-1">استخدم Ctrl لتحديد أكثر من موظف</p>' +
                     '</div>' +
                     '<div class="flex justify-end gap-2 mt-6">' +
                         '<button type="submit" class="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-800 font-bold shadow-md"><i class="fas fa-check ml-2"></i> ' + (id !== 'null' && id ? 'حفظ التعديلات' : 'إنشاء الحساب') + '</button>' +
@@ -2257,12 +2359,17 @@
                 return;
             }
 
+            const scope = document.getElementById('usr_scope').value;
+            const specific = Array.from(document.getElementById('usr_specific').selectedOptions).map(opt => opt.value);
+
             const data = {
                 name: document.getElementById('usr_name').value.trim(),
                 employeeId: document.getElementById('usr_employeeId').value || null,
                 username: un,
                 password: document.getElementById('usr_password').value.trim(),
-                role: document.getElementById('usr_role').value
+                role: document.getElementById('usr_role').value,
+                assignmentScope: scope,
+                specificAssignees: specific
             };
 
             if (id !== 'null' && id) {
