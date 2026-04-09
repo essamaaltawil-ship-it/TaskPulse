@@ -42,18 +42,25 @@
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
         #sidebar { transition: transform 0.3s ease-in-out; }
         
-        /* إعدادات الطباعة المكثفة (Ultra-Compact Print) */
+        /* إعدادات الطباعة المكثفة والذكية (Smart Compact Print) */
         @media print {
-            @page { margin: 10mm; size: A4 portrait; }
+            @page { margin: 6mm; size: A4 portrait; }
             html, body { height: auto !important; overflow: visible !important; background: white !important; margin: 0; padding: 0; }
             body * { visibility: hidden; }
             #print-area { display: block !important; visibility: visible !important; position: absolute; left: 0; top: 0; width: 100%; direction: rtl; padding: 0 !important; }
-            #print-area * { visibility: visible !important; color: black !important; }
+            #print-area * { visibility: visible !important; color: black !important; font-family: 'Tajawal', Arial, sans-serif; }
             * { -webkit-print-color-adjust: exact !important; color-adjust: exact !important; }
             .no-print { display: none !important; }
+            
+            /* الكلاسات المسؤولة عن منع قص النصوص بين الصفحات */
+            .avoid-break { page-break-inside: avoid; break-inside: avoid; }
+            .print-update-row { display: flex; border-bottom: 1px solid #ccc; padding: 3px 0; page-break-inside: avoid; align-items: flex-start; }
+            .print-update-meta { width: 18%; padding-right: 4px; font-size: 9px; color: #444; border-left: 1px solid #eee; }
+            .print-update-text { width: 82%; padding-right: 6px; font-size: 10px; white-space: pre-wrap; word-wrap: break-word; }
+            
             .print-card { border: 1px solid #000; padding: 8px; margin-bottom: 10px; page-break-inside: avoid; }
-            .print-table { width: 100%; border-collapse: collapse; font-size: 11px; }
-            .print-table th, .print-table td { border: 1px solid #000; padding: 4px; text-align: right; }
+            .print-table { width: 100%; border-collapse: collapse; font-size: 10px; }
+            .print-table th, .print-table td { border: 1px solid #000; padding: 3px; text-align: right; }
         }
 
         .glass-effect { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
@@ -70,7 +77,7 @@
 </head>
 <body class="text-gray-800 antialiased h-screen flex overflow-hidden">
 
-    <!-- 🔐 شاشة تسجيل الدخول (Login Screen) -->
+    <!-- 🔐 شاشة تسجيل الدخول -->
     <div id="login-screen" class="fixed inset-0 z-[200] bg-gray-900 flex flex-col items-center justify-center transition-opacity duration-500">
         <div class="bg-white dark:bg-darkcard p-8 rounded-2xl shadow-2xl w-full max-w-md mx-4 transform transition-all">
             <div class="text-center mb-8">
@@ -146,7 +153,7 @@
         </nav>
         <div class="p-4 border-t border-blue-800 text-sm text-center text-blue-300 flex justify-center items-center gap-2 font-bold">
             <span class="w-2 h-2 rounded-full bg-green-400 animate-pulse" id="sidebar-sync-indicator"></span>
-            الإصدار 1.7.2 (Secured + Compact Print)
+            الإصدار 1.7.5 (Smart Print)
         </div>
     </aside>
 
@@ -202,7 +209,7 @@
     <div id="modals-container"></div>
 
     <!-- ========================================================================= -->
-    <!-- ☁️ محرك مزامنة فايربيس (Firebase Sync Engine) -->
+    <!-- ☁️ محرك مزامنة فايربيس -->
     <!-- ========================================================================= -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
@@ -250,6 +257,49 @@
                 syncIcon.className = "cursor-pointer hover:bg-yellow-200 hidden md:inline-flex items-center text-xs font-bold text-yellow-700 bg-yellow-100 border border-yellow-300 px-3 py-1.5 rounded shadow-sm transition-colors duration-300";
                 syncIcon.innerHTML = '<i class="fas fa-exclamation-triangle ml-2"></i> خطأ بالمزامنة (اضغط للفحص)';
                 if(sideIcon) { sideIcon.className = "w-2 h-2 rounded-full bg-yellow-500"; }
+            }
+        };
+
+        window.forcePushToCloud = async function() {
+            if (!auth.currentUser) {
+                if(typeof showToast !== 'undefined') showToast('يجب تسجيل الدخول أولاً للاتصال بالسحابة', 'error');
+                return;
+            }
+            try {
+                window.updateConnectionUI('syncing');
+                const docRef = doc(dbFirestore, 'artifacts', appId, 'public', 'data', 'sharedState', 'main');
+                await setDoc(docRef, { payload: JSON.stringify(db), lastUpdated: new Date().toISOString() });
+                window.updateConnectionUI('online');
+                if(typeof showToast !== 'undefined') showToast('تم رفع واعتماد بيانات هذا الجهاز في السحابة بنجاح', 'success');
+            } catch(e) {
+                console.error("Force Push Error:", e);
+                window.updateConnectionUI('error');
+                if(typeof showToast !== 'undefined') showToast('حدث خطأ أثناء رفع البيانات', 'error');
+            }
+        };
+
+        window.forcePullFromCloud = async function() {
+            if (!auth.currentUser) {
+                if(typeof showToast !== 'undefined') showToast('يجب تسجيل الدخول أولاً للاتصال بالسحابة', 'error');
+                return;
+            }
+            try {
+                window.updateConnectionUI('syncing');
+                if(typeof showToast !== 'undefined') showToast('جاري جلب البيانات من السحابة...', 'info');
+                const docRef = doc(dbFirestore, 'artifacts', appId, 'public', 'data', 'sharedState', 'main');
+                const docSnap = await getDoc(docRef);
+                if (docSnap.exists()) {
+                    const cloudData = JSON.parse(docSnap.data().payload);
+                    window.updateLocalDbFromCloud(cloudData);
+                    if(typeof showToast !== 'undefined') showToast('تم تنزيل وتحديث البيانات من السحابة بنجاح', 'success');
+                } else {
+                    if(typeof showToast !== 'undefined') showToast('لا توجد بيانات سابقة في السحابة', 'error');
+                }
+                window.updateConnectionUI('online');
+            } catch(e) {
+                console.error("Force Pull Error:", e);
+                window.updateConnectionUI('error');
+                if(typeof showToast !== 'undefined') showToast('حدث خطأ أثناء تنزيل البيانات', 'error');
             }
         };
 
@@ -302,7 +352,6 @@
             }
         };
 
-        // 🛟 دالة استرجاع البيانات القديمة من المسار السابق
         window.recoverOldCloudData = async function() {
             if (!auth.currentUser) {
                 if(typeof showToast !== 'undefined') showToast('يجب الاتصال بالسحابة أولاً', 'error');
@@ -311,7 +360,6 @@
             try {
                 if(typeof showToast !== 'undefined') showToast('جاري البحث عن بياناتك القديمة في السحابة...', 'info');
                 
-                // البحث في المسار الفردي القديم
                 const oldDocRef = doc(dbFirestore, 'artifacts', appId, 'users', auth.currentUser.uid, 'financeData', 'state');
                 const docSnap = await getDoc(oldDocRef);
                 
@@ -319,7 +367,6 @@
                     const oldData = JSON.parse(docSnap.data().payload);
                     window.updateLocalDbFromCloud(oldData);
                     
-                    // حفظها فوراً في المسار المشترك الجديد
                     if (window.CloudSync && window.CloudSync.save) {
                         window.CloudSync.save(oldData);
                     }
@@ -339,7 +386,7 @@
                 window.updateConnectionUI('offline');
                 setTimeout(() => {
                     if(!isConnectedInitially) {
-                        window.initializeFirstTime();
+                        window.initializeFirstTime(false);
                     }
                 }, 4000);
             }
@@ -349,7 +396,7 @@
             if (!navigator.onLine) {
                 clearTimeout(connectionTimeout);
                 window.updateConnectionUI('offline');
-                setTimeout(window.initializeFirstTime, 2000);
+                setTimeout(() => window.initializeFirstTime(false), 2000);
                 return;
             }
 
@@ -364,7 +411,7 @@
                 clearTimeout(connectionTimeout);
                 document.getElementById('cloud-status').innerHTML = `<span class="text-red-500">فشل المصادقة: تأكد من تفعيل (Anonymous Auth)</span><br><span class="text-xs" dir="ltr">${err.message}</span>`;
                 window.updateConnectionUI('error');
-                setTimeout(window.initializeFirstTime, 4000); 
+                setTimeout(() => window.initializeFirstTime(false), 4000); 
             }
         }
 
@@ -384,17 +431,17 @@
                                 const cloudData = JSON.parse(docSnap.data().payload);
                                 window.updateLocalDbFromCloud(cloudData);
                             } catch(e) {
-                                window.initializeFirstTime();
+                                window.initializeFirstTime(false);
                             }
                         } else {
-                            window.initializeFirstTime();
+                            window.initializeFirstTime(true); 
                         }
                     }, (err) => {
                         console.error("Listen error", err);
                         clearTimeout(connectionTimeout);
                         document.getElementById('cloud-status').innerHTML = `<span class="text-red-500">مرفوض من قاعدة البيانات: تأكد من إنشاء (Firestore) وإعطاء الصلاحيات</span><br><span class="text-xs" dir="ltr">${err.message}</span>`;
                         window.updateConnectionUI('error');
-                        setTimeout(window.initializeFirstTime, 5000);
+                        setTimeout(() => window.initializeFirstTime(false), 5000);
                     });
                 }
             });
@@ -411,6 +458,12 @@
         };
 
         let activeSessionUser = null;
+
+        // دالة مساعدة لتحديد وإلغاء تحديد كل الخيارات في الفلاتر
+        window.toggleCheckboxes = function(containerClass, state) {
+            const checkboxes = document.querySelectorAll(`.${containerClass} input[type="checkbox"]`);
+            checkboxes.forEach(cb => { cb.checked = state; });
+        };
 
         function checkAppAuthentication() {
             const savedSession = sessionStorage.getItem('activeAppUser');
@@ -433,7 +486,7 @@
 
             if(!db.users || db.users.length === 0) {
                 db.users = [{ id: generateId(), username: 'admin', password: '123', name: 'المدير العام (Admin)', role: 'admin' }];
-                saveDB();
+                localStorage.setItem(DB_KEY, JSON.stringify(db));
             }
 
             const user = db.users.find(u => u.username === un && u.password === pw);
@@ -473,7 +526,7 @@
         window.updateLocalDbFromCloud = function(cloudData) {
             db = cloudData;
             
-            if(!db.users) db.users = [{ id: generateId(), username: 'admin', password: '123', name: 'المدير العام', role: 'admin' }];
+            if(!db.users || db.users.length === 0) db.users = [{ id: generateId(), username: 'admin', password: '123', name: 'المدير العام', role: 'admin' }];
             if(db.requirements) { db.requirements.forEach(req => { if (!req.updates) req.updates = []; }); }
             
             localStorage.setItem(DB_KEY, JSON.stringify(db)); 
@@ -482,19 +535,31 @@
                 document.documentElement.classList.add('dark');
                 const tIcon = document.getElementById('theme-icon');
                 if(tIcon) tIcon.classList.replace('fa-moon', 'fa-sun');
+            } else {
+                document.documentElement.classList.remove('dark');
+                const tIcon = document.getElementById('theme-icon');
+                if(tIcon) tIcon.classList.replace('fa-sun', 'fa-moon');
             }
             
             hideCloudLoader();
             checkAppAuthentication(); 
-            if(activeSessionUser) renderDashboard(); 
+            
+            if(activeSessionUser) {
+                const activeNav = document.querySelector('.nav-link.bg-blue-800');
+                if (activeNav) {
+                    nav(activeNav.getAttribute('data-target'));
+                } else {
+                    renderDashboard();
+                }
+            }
         };
 
-        window.initializeFirstTime = function() {
+        window.initializeFirstTime = function(pushToCloud = false) {
             const stored = localStorage.getItem(DB_KEY);
             if (stored) {
                 try {
                     db = JSON.parse(stored);
-                    if(!db.users) db.users = [{ id: generateId(), username: 'admin', password: '123', name: 'المدير العام', role: 'admin' }];
+                    if(!db.users || db.users.length === 0) db.users = [{ id: generateId(), username: 'admin', password: '123', name: 'المدير العام', role: 'admin' }];
                     if(db.requirements) { db.requirements.forEach(req => { if (!req.updates) req.updates = []; }); }
                 } catch(e) { seedDB(); }
             } else {
@@ -507,10 +572,23 @@
                 if(tIcon) tIcon.classList.replace('fa-moon', 'fa-sun');
             }
 
-            saveDB(); 
+            if(pushToCloud) {
+                saveDB(); 
+            } else {
+                localStorage.setItem(DB_KEY, JSON.stringify(db));
+            }
+            
             hideCloudLoader();
             checkAppAuthentication(); 
-            if(activeSessionUser) renderDashboard();
+            
+            if(activeSessionUser) {
+                const activeNav = document.querySelector('.nav-link.bg-blue-800');
+                if (activeNav) {
+                    nav(activeNav.getAttribute('data-target'));
+                } else {
+                    renderDashboard();
+                }
+            }
         };
 
         function hideCloudLoader() {
@@ -1142,13 +1220,17 @@
                                                 <i class="fas fa-chevron-down text-gray-400 text-xs"></i>
                                             </summary>
                                             <div class="absolute z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 mt-1 p-2 w-full shadow-lg rounded max-h-48 overflow-y-auto filter-status-task text-sm">
-                                                <label class="flex items-center gap-2 p-1 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"><input type="checkbox" value="جديدة" class="rounded text-blue-600" onchange="filterTaskTable()"> جديدة</label>
-                                                <label class="flex items-center gap-2 p-1 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"><input type="checkbox" value="قيد التنفيذ" class="rounded text-blue-600" onchange="filterTaskTable()"> قيد التنفيذ</label>
-                                                <label class="flex items-center gap-2 p-1 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"><input type="checkbox" value="بانتظار متطلبات" class="rounded text-blue-600" onchange="filterTaskTable()"> بانتظار متطلبات</label>
-                                                <label class="flex items-center gap-2 p-1 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"><input type="checkbox" value="مكتملة فنيًا" class="rounded text-blue-600" onchange="filterTaskTable()"> مكتملة فنيًا</label>
-                                                <label class="flex items-center gap-2 p-1 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"><input type="checkbox" value="مقفلة" class="rounded text-blue-600" onchange="filterTaskTable()"> مقفلة</label>
-                                                <label class="flex items-center gap-2 p-1 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"><input type="checkbox" value="موقوفة" class="rounded text-blue-600" onchange="filterTaskTable()"> موقوفة</label>
-                                                <label class="flex items-center gap-2 p-1 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"><input type="checkbox" value="ملغاة" class="rounded text-blue-600" onchange="filterTaskTable()"> ملغاة</label>
+                                                <div class="p-2 border-b dark:border-gray-600 flex justify-between bg-gray-50 dark:bg-gray-700 sticky top-0">
+                                                    <button type="button" onclick="toggleCheckboxes('filter-status-task', true); filterTaskTable();" class="text-xs text-blue-600 dark:text-blue-400 font-bold hover:underline">تحديد الكل</button>
+                                                    <button type="button" onclick="toggleCheckboxes('filter-status-task', false); filterTaskTable();" class="text-xs text-red-600 dark:text-red-400 font-bold hover:underline">إلغاء الكل</button>
+                                                </div>
+                                                <label class="flex items-center gap-2 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"><input type="checkbox" value="جديدة" class="rounded text-blue-600" onchange="filterTaskTable()"> جديدة</label>
+                                                <label class="flex items-center gap-2 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"><input type="checkbox" value="قيد التنفيذ" class="rounded text-blue-600" onchange="filterTaskTable()"> قيد التنفيذ</label>
+                                                <label class="flex items-center gap-2 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"><input type="checkbox" value="بانتظار متطلبات" class="rounded text-blue-600" onchange="filterTaskTable()"> بانتظار متطلبات</label>
+                                                <label class="flex items-center gap-2 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"><input type="checkbox" value="مكتملة فنيًا" class="rounded text-blue-600" onchange="filterTaskTable()"> مكتملة فنيًا</label>
+                                                <label class="flex items-center gap-2 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"><input type="checkbox" value="مقفلة" class="rounded text-blue-600" onchange="filterTaskTable()"> مقفلة</label>
+                                                <label class="flex items-center gap-2 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"><input type="checkbox" value="موقوفة" class="rounded text-blue-600" onchange="filterTaskTable()"> موقوفة</label>
+                                                <label class="flex items-center gap-2 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"><input type="checkbox" value="ملغاة" class="rounded text-blue-600" onchange="filterTaskTable()"> ملغاة</label>
                                             </div>
                                         </details>
                                     </th>
@@ -1329,14 +1411,18 @@
                                             <i class="fas fa-chevron-down text-gray-400 text-xs"></i>
                                         </summary>
                                         <div class="absolute z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 mt-1 p-2 w-full shadow-lg rounded max-h-48 overflow-y-auto filter-status-req text-sm">
-                                            <label class="flex items-center gap-2 p-1 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"><input type="checkbox" value="جديد" class="rounded text-blue-600" onchange="filterRequirements()"> جديد</label>
-                                            <label class="flex items-center gap-2 p-1 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"><input type="checkbox" value="مسند" class="rounded text-blue-600" onchange="filterRequirements()"> مسند</label>
-                                            <label class="flex items-center gap-2 p-1 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"><input type="checkbox" value="قيد التنفيذ" class="rounded text-blue-600" onchange="filterRequirements()"> قيد التنفيذ</label>
-                                            <label class="flex items-center gap-2 p-1 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"><input type="checkbox" value="بانتظار بيانات" class="rounded text-blue-600" onchange="filterRequirements()"> بانتظار بيانات</label>
-                                            <label class="flex items-center gap-2 p-1 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"><input type="checkbox" value="معاد للتصحيح" class="rounded text-blue-600" onchange="filterRequirements()"> معاد للتصحيح</label>
-                                            <label class="flex items-center gap-2 p-1 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"><input type="checkbox" value="مكتمل" class="rounded text-blue-600" onchange="filterRequirements()"> مكتمل</label>
-                                            <label class="flex items-center gap-2 p-1 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"><input type="checkbox" value="مرفوض" class="rounded text-blue-600" onchange="filterRequirements()"> مرفوض</label>
-                                            <label class="flex items-center gap-2 p-1 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"><input type="checkbox" value="ملغى" class="rounded text-blue-600" onchange="filterRequirements()"> ملغى</label>
+                                            <div class="p-2 border-b dark:border-gray-600 flex justify-between bg-gray-50 dark:bg-gray-700 sticky top-0">
+                                                <button type="button" onclick="toggleCheckboxes('filter-status-req', true); filterRequirements();" class="text-xs text-blue-600 dark:text-blue-400 font-bold hover:underline">تحديد الكل</button>
+                                                <button type="button" onclick="toggleCheckboxes('filter-status-req', false); filterRequirements();" class="text-xs text-red-600 dark:text-red-400 font-bold hover:underline">إلغاء الكل</button>
+                                            </div>
+                                            <label class="flex items-center gap-2 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"><input type="checkbox" value="جديد" class="rounded text-blue-600" onchange="filterRequirements()"> جديد</label>
+                                            <label class="flex items-center gap-2 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"><input type="checkbox" value="مسند" class="rounded text-blue-600" onchange="filterRequirements()"> مسند</label>
+                                            <label class="flex items-center gap-2 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"><input type="checkbox" value="قيد التنفيذ" class="rounded text-blue-600" onchange="filterRequirements()"> قيد التنفيذ</label>
+                                            <label class="flex items-center gap-2 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"><input type="checkbox" value="بانتظار بيانات" class="rounded text-blue-600" onchange="filterRequirements()"> بانتظار بيانات</label>
+                                            <label class="flex items-center gap-2 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"><input type="checkbox" value="معاد للتصحيح" class="rounded text-blue-600" onchange="filterRequirements()"> معاد للتصحيح</label>
+                                            <label class="flex items-center gap-2 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"><input type="checkbox" value="مكتمل" class="rounded text-blue-600" onchange="filterRequirements()"> مكتمل</label>
+                                            <label class="flex items-center gap-2 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"><input type="checkbox" value="مرفوض" class="rounded text-blue-600" onchange="filterRequirements()"> مرفوض</label>
+                                            <label class="flex items-center gap-2 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"><input type="checkbox" value="ملغى" class="rounded text-blue-600" onchange="filterRequirements()"> ملغى</label>
                                         </div>
                                     </details>
                                 </th>
@@ -1585,7 +1671,6 @@
                 };
                 db.requirements[reqIdx].updates.unshift(newUpdate);
                 
-                // فرز التحديثات لإبقاء التسلسل الزمني صحيحاً
                 db.requirements[reqIdx].updates.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
                 
                 saveDB();
@@ -1606,7 +1691,6 @@
             }
         }
 
-        // نافذة التعديل الشامل للتحديثات
         window.editReqUpdate = function(reqId, updateId) {
             const reqIdx = db.requirements.findIndex(x => x.id === reqId);
             if(reqIdx > -1) {
@@ -1672,7 +1756,6 @@
                         db.requirements[reqIdx].updates[updIdx].timestamp = new Date(timeStr).toISOString();
                     }
                     
-                    // إعادة الفرز بعد التعديل لضمان التسلسل الصحيح
                     db.requirements[reqIdx].updates.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
                     
                     saveDB();
@@ -1844,15 +1927,15 @@
                 
                 html = `
                     <div class="print-card">
-                        <h1 style="text-align:center; margin-bottom: 20px; color:#1e3a8a;">تقرير بيانات الموظف والعهد</h1>
-                        <table class="print-table" style="margin-bottom: 20px;">
-                            <tr><th style="background:#f1f5f9;">الاسم</th><td style="font-weight:bold;">${emp.name}</td><th style="background:#f1f5f9;">الرقم</th><td>${emp.code}</td></tr>
-                            <tr><th style="background:#f1f5f9;">القسم</th><td>${emp.department}</td><th style="background:#f1f5f9;">المسمى</th><td>${emp.title}</td></tr>
+                        <h1 style="text-align:center; margin-bottom: 15px; color:#000; font-size: 18px;">تقرير بيانات الموظف والعهد</h1>
+                        <table class="print-table" style="margin-bottom: 15px;">
+                            <tr><th style="background:#e5e7eb; width:15%;">الاسم</th><td style="font-weight:bold; width:35%;">${emp.name}</td><th style="background:#e5e7eb; width:15%;">الرقم</th><td style="width:35%;">${emp.code}</td></tr>
+                            <tr><th style="background:#e5e7eb;">القسم</th><td>${emp.department}</td><th style="background:#e5e7eb;">المسمى</th><td>${emp.title}</td></tr>
                         </table>
                         
-                        <h3 style="border-bottom:1px solid #ccc; padding-bottom:5px;">العناصر المسندة حالياً (${assigns.length})</h3>
-                        <table class="print-table" style="margin-bottom: 20px;">
-                            <tr style="background:#f1f5f9;"><th>كود العنصر</th><th>الاسم</th><th>النوع</th><th>تاريخ الإسناد</th></tr>
+                        <div style="font-weight: bold; border-bottom: 2px solid #000; padding-bottom: 2px; margin-bottom: 5px;">العناصر المسندة حالياً (${assigns.length})</div>
+                        <table class="print-table" style="margin-bottom: 15px;">
+                            <tr style="background:#e5e7eb;"><th>كود العنصر</th><th>الاسم</th><th>النوع</th><th>تاريخ الإسناد</th></tr>
                             ${assigns.map(a => {
                                 const el = db.elements.find(e => e.id === a.elementId);
                                 const tName = db.elementTypes.find(t=>t.id===el?.typeId)?.name;
@@ -1860,9 +1943,9 @@
                             }).join('')}
                         </table>
 
-                        <h3 style="border-bottom:1px solid #ccc; padding-bottom:5px;">المتطلبات المفتوحة في ذمته (${reqs.length})</h3>
+                        <div style="font-weight: bold; border-bottom: 2px solid #000; padding-bottom: 2px; margin-bottom: 5px;">المتطلبات المفتوحة في ذمته (${reqs.length})</div>
                         <table class="print-table">
-                            <tr style="background:#f1f5f9;"><th>وصف المتطلب</th><th>المهمة الأم (المشروع)</th><th>الديدلاين</th><th>الحالة</th></tr>
+                            <tr style="background:#e5e7eb;"><th>وصف المتطلب</th><th>المهمة الأم (المشروع)</th><th>الديدلاين</th><th>الحالة</th></tr>
                             ${reqs.map(r => {
                                 const tName = db.tasks.find(t=>t.id===r.taskId)?.title;
                                 return `<tr><td style="font-weight:bold;">${r.title}</td><td>${tName||''}</td><td dir="ltr" style="color:red; font-weight:bold;">${r.dueDate}</td><td>${r.status}</td></tr>`;
@@ -1878,85 +1961,81 @@
                 const completedCount = reqs.filter(r=>r.status==='مكتمل').length;
                 const prog = reqs.length === 0 ? 0 : Math.round((completedCount/reqs.length)*100);
 
-                // ==========================================
-                // محرك الطباعة الجديد (Ultra-Compact Print)
-                // ==========================================
                 html = `
                     <div style="font-family: 'Tajawal', Arial, sans-serif; direction: rtl; color: #000; background: #fff;">
-                        <div style="text-align:center; border-bottom: 2px solid #000; padding-bottom: 3px; margin-bottom: 10px;">
-                            <h2 style="margin: 0; font-size: 16px; font-weight: 900;">التقرير التتبعي الشامل للمهمة</h2>
-                            <p style="margin: 2px 0 0 0; font-size: 10px; color: #555;">تاريخ الاستخراج: ${new Date().toLocaleString('ar-SA')} | نظام الإدارة المالية ERP</p>
+                        <div style="text-align:center; border-bottom: 2px solid #000; padding-bottom: 2px; margin-bottom: 8px;">
+                            <h2 style="margin: 0; font-size: 15px; font-weight: 900;">التقرير التتبعي الشامل للمهمة</h2>
+                            <p style="margin: 0; font-size: 9px; color: #333;">تاريخ الاستخراج: ${new Date().toLocaleString('ar-SA')} | نظام الإدارة المالية</p>
                         </div>
                         
-                        <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px; border: 1px solid #000; font-size: 11px;">
-                            <tr>
-                                <td style="width: 12%; border: 1px solid #000; padding: 4px; background-color: #e5e7eb; font-weight: bold;">عنوان المهمة:</td>
-                                <td style="width: 38%; border: 1px solid #000; padding: 4px; font-weight: 900; font-size: 13px;">${task.title}</td>
-                                <td style="width: 12%; border: 1px solid #000; padding: 4px; background-color: #e5e7eb; font-weight: bold;">الاستحقاق:</td>
-                                <td style="width: 38%; border: 1px solid #000; padding: 4px; font-weight: bold; color: #dc2626;" dir="ltr">${task.dueDate}</td>
-                            </tr>
-                            <tr>
-                                <td style="border: 1px solid #000; padding: 4px; background-color: #e5e7eb; font-weight: bold;">الحالة:</td>
-                                <td style="border: 1px solid #000; padding: 4px; font-weight: bold;">${task.status} (إنجاز: ${prog}%)</td>
-                                <td style="border: 1px solid #000; padding: 4px; background-color: #e5e7eb; font-weight: bold;">التصنيف:</td>
-                                <td style="border: 1px solid #000; padding: 4px;">${task.priority || ''} / ${task.category || '-'}</td>
-                            </tr>
-                            <tr>
-                                <td style="border: 1px solid #000; padding: 4px; background-color: #e5e7eb; font-weight: bold; vertical-align: top;">وصف المهمة:</td>
-                                <td colspan="3" style="border: 1px solid #000; padding: 4px; white-space: pre-wrap;">${task.description || 'لا يوجد وصف مدخل لهذه المهمة.'}</td>
-                            </tr>
-                        </table>
+                        <!-- القسم الخاص بمعلومات المهمة -->
+                        <div style="border: 2px solid #000; margin-bottom: 10px; font-size: 10px;">
+                            <div style="display: flex; border-bottom: 1px solid #000;">
+                                <div style="width: 15%; background: #e5e7eb; padding: 4px; font-weight: bold; border-left: 1px solid #000;">عنوان المهمة:</div>
+                                <div style="width: 35%; padding: 4px; font-weight: 900; font-size: 12px; border-left: 1px solid #000;">${task.title}</div>
+                                <div style="width: 15%; background: #e5e7eb; padding: 4px; font-weight: bold; border-left: 1px solid #000;">الاستحقاق:</div>
+                                <div style="width: 35%; padding: 4px; font-weight: bold; color: #dc2626;" dir="ltr">${task.dueDate}</div>
+                            </div>
+                            <div style="display: flex; border-bottom: 1px solid #000;">
+                                <div style="width: 15%; background: #e5e7eb; padding: 4px; font-weight: bold; border-left: 1px solid #000;">الحالة:</div>
+                                <div style="width: 35%; padding: 4px; font-weight: bold; border-left: 1px solid #000;">${task.status} (إنجاز: ${prog}%)</div>
+                                <div style="width: 15%; background: #e5e7eb; padding: 4px; font-weight: bold; border-left: 1px solid #000;">التصنيف:</div>
+                                <div style="width: 35%; padding: 4px;">${task.priority || ''} / ${task.category || '-'}</div>
+                            </div>
+                            <div style="display: flex;">
+                                <div style="width: 15%; background: #e5e7eb; padding: 4px; font-weight: bold; border-left: 1px solid #000;">وصف المهمة:</div>
+                                <div style="width: 85%; padding: 4px; white-space: pre-wrap;">${task.description || 'لا يوجد وصف مدخل لهذه المهمة.'}</div>
+                            </div>
+                        </div>
                         
-                        <div style="font-weight: 900; font-size: 12px; border-bottom: 2px solid #000; margin-bottom: 6px; padding-bottom: 2px;">متطلبات المهمة وسجل التحديثات الحية:</div>
+                        <div style="font-weight: 900; font-size: 12px; background: #1f2937; color: #fff; padding: 4px; text-align: center; border: 2px solid #000; border-bottom: none;">متطلبات المهمة والتحديثات الحية</div>
+                        
+                        <div style="border: 2px solid #000; border-top: none;">
                 `;
 
                 if(reqs.length === 0) {
-                    html += `<div style="text-align:center; font-size:11px; padding:5px; color:#555;">لا توجد متطلبات مرتبطة بهذه المهمة.</div>`;
+                    html += `<div style="text-align:center; padding:5px; font-size: 10px; color:#555;">لا توجد متطلبات مرتبطة بهذه المهمة.</div>`;
                 }
 
                 reqs.forEach((r, index) => {
                     const empName = db.employees.find(e=>e.id===r.employeeId)?.name || 'غير محدد';
                     
                     html += `
-                    <div style="margin-bottom: 8px; border: 1px solid #374151; page-break-inside: avoid;">
-                        <div style="background-color: #e2e8f0; padding: 4px 6px; font-weight: bold; display: flex; justify-content: space-between; border-bottom: 1px solid #374151; font-size: 11px;">
-                            <span>${index + 1}. ${r.title}</span>
-                            <span style="font-weight: normal;">[${r.status}] | م: ${empName} | الموعد: <span dir="ltr">${r.dueDate}</span></span>
-                        </div>
-                        <div style="padding: 2px;">
+                        <div class="avoid-break" style="border-top: 2px solid #000;">
+                            <div style="background: #cbd5e1; padding: 4px; font-weight: bold; border-bottom: 1px solid #000; font-size: 11px;">
+                                ${index + 1}. ${r.title} <span style="font-weight: normal; font-size: 9px; margin-right: 15px;">[${r.status}] | م: ${empName} | الموعد: <span dir="ltr">${r.dueDate}</span></span>
+                            </div>
+                            <div style="padding: 2px;">
                     `;
 
                     if(!r.updates || r.updates.length === 0) {
-                        html += `<div style="margin:2px 0; font-size:10px; color:#6b7280; text-align:center; font-style:italic;">لا توجد تحديثات مسجلة</div>`;
+                        html += `<div style="padding: 2px; text-align:center; font-size:9px; color:#666; font-style:italic;">لا توجد تحديثات مسجلة</div>`;
                     } else {
-                        // ترتيب زمني من الأقدم للأحدث للطباعة ليسهل تتبع القصة
                         const sortedUpdates = [...r.updates].sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp));
                         
-                        html += `<table style="width: 100%; border-collapse: collapse; font-size: 10px;">`;
-                        sortedUpdates.forEach((up, upIndex) => {
-                            const isLast = upIndex === sortedUpdates.length - 1;
-                            const borderStyle = isLast ? 'none' : '1px dashed #94a3b8';
-                            
+                        sortedUpdates.forEach(up => {
                             html += `
-                                <tr>
-                                    <td style="width: 20%; padding: 3px; border-bottom: ${borderStyle}; vertical-align: top; color: #475569; border-left: 1px solid #cbd5e1;">
-                                        <div dir="ltr" style="text-align: right;">${new Date(up.timestamp).toLocaleString('ar-SA', {year:'numeric',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})}</div>
-                                        <div style="font-weight: bold; color: #0f172a; margin-top: 2px;">${up.user}</div>
-                                    </td>
-                                    <td style="width: 80%; padding: 3px 6px; border-bottom: ${borderStyle}; vertical-align: top; white-space: pre-wrap;">${up.text}${up.attachmentPath ? `<div style="margin-top: 3px; color: #2563eb; font-family: monospace; font-size: 9px; background: #f8fafc; padding: 2px; border-radius: 2px;">📎 ${up.attachmentPath.replace(/['"]/g, '')}</div>` : ''}</td>
-                                </tr>
+                                <div class="print-update-row">
+                                    <div class="print-update-meta">
+                                        <div dir="ltr" style="text-align: right;">${new Date(up.timestamp).toLocaleString('ar-SA', {year:'2-digit',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})}</div>
+                                        <div style="font-weight: bold; color: #000; margin-top: 1px;">${up.user}</div>
+                                    </div>
+                                    <div class="print-update-text">
+                                        ${up.text}
+                                        ${up.attachmentPath ? `<div style="margin-top: 2px; display:inline-block; color: #1e40af; font-family: monospace; font-size: 8px; background: #f1f5f9; padding: 1px 3px; border-radius: 2px; border: 1px solid #cbd5e1;">📎 ${up.attachmentPath.replace(/['"]/g, '')}</div>` : ''}
+                                    </div>
+                                </div>
                             `;
                         });
-                        html += `</table>`;
                     }
 
                     html += `
+                            </div>
                         </div>
-                    </div>
                     `;
                 });
 
-                html += `</div>`;
+                html += `</div></div>`;
             } else if (type === 'handover') {
                 const h = db.handovers.find(x => x.id === directId);
                 const fromE = db.employees.find(e=>e.id===h.fromEmpId)?.name;
@@ -1985,7 +2064,6 @@
         function renderSettings() {
             const v = document.getElementById('view-settings');
             
-            // جدول إدارة المستخدمين
             let usersHTML = `
                 <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg mt-6 border border-gray-200 dark:border-gray-700">
                     <div class="flex justify-between items-center mb-4 border-b border-gray-200 dark:border-gray-700 pb-2">
@@ -2014,13 +2092,31 @@
                                                 ${u.role === 'admin' ? 'مدير نظام (Admin)' : 'موظف (User)'}
                                             </span>
                                         </td>
-                                        <td class="px-4 py-2 text-center">
+                                        <td class="px-4 py-2 text-center flex justify-center gap-2">
+                                            <button onclick="openUserForm('${u.id}')" class="text-blue-500 hover:text-blue-700" title="تعديل الحساب"><i class="fas fa-edit"></i></button>
                                             <button onclick="deleteSystemUser('${u.id}')" class="text-red-500 hover:text-red-700" title="حذف الحساب"><i class="fas fa-trash"></i></button>
                                         </td>
                                     </tr>
                                 `).join('')}
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            `;
+
+            let syncPanelHTML = `
+                <div class="p-5 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800 shadow-sm mt-6">
+                    <div class="mb-4">
+                        <p class="font-bold text-blue-800 dark:text-blue-300 text-lg"><i class="fas fa-sync-alt ml-1"></i> التحكم اليدوي بالمزامنة (Sync Control)</p>
+                        <p class="text-sm text-blue-600 dark:text-blue-400 mt-1 leading-relaxed">إذا لاحظت اختلافاً بين أجهزتك، استخدم جهازك الذي يحتوي على البيانات الصحيحة واضغط "رفع"، ثم افتح الجهاز الآخر واضغط "تنزيل".</p>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <button onclick="forcePushToCloud()" class="bg-blue-600 text-white px-4 py-3 rounded-lg hover:bg-blue-700 font-bold shadow-md transition transform hover:-translate-y-0.5 flex justify-center items-center gap-2">
+                            <i class="fas fa-cloud-upload-alt text-xl"></i> رفع واعتماد بيانات هذا الجهاز
+                        </button>
+                        <button onclick="forcePullFromCloud()" class="bg-indigo-600 text-white px-4 py-3 rounded-lg hover:bg-indigo-700 font-bold shadow-md transition transform hover:-translate-y-0.5 flex justify-center items-center gap-2">
+                            <i class="fas fa-cloud-download-alt text-xl"></i> تنزيل بيانات السحابة لهذا الجهاز
+                        </button>
                     </div>
                 </div>
             `;
@@ -2043,7 +2139,8 @@
                         </div>
                     </div>
 
-                    <!-- 🛟 زر الإنقاذ للبيانات السابقة -->
+                    ${syncPanelHTML}
+
                     <div class="p-5 bg-red-50 dark:bg-red-900/20 rounded-xl flex justify-between items-center border border-red-200 dark:border-red-800 shadow-sm mt-6">
                         <div>
                             <p class="font-bold text-red-700 dark:text-red-400 text-lg"><i class="fas fa-life-ring ml-1"></i> الإنقاذ السحابي (استرجاع البيانات)</p>
@@ -2057,37 +2154,38 @@
             `;
         }
 
-        function openUserForm() {
+        function openUserForm(id = null) {
+            let u = id ? db.users.find(x => x.id === id) : { role: 'user' };
             let html = `
                 <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center flex-shrink-0 bg-gray-50 dark:bg-gray-800 rounded-t-xl">
-                    <h3 class="text-lg font-bold dark:text-white"><i class="fas fa-user-plus text-blue-500 ml-2"></i> إنشاء حساب دخول جديد</h3>
+                    <h3 class="text-lg font-bold dark:text-white"><i class="fas ${id ? 'fa-user-edit' : 'fa-user-plus'} text-blue-500 ml-2"></i> ${id ? 'تعديل بيانات الحساب' : 'إنشاء حساب دخول جديد'}</h3>
                     <button onclick="closeModal('userModal')" class="text-gray-500 hover:text-red-500"><i class="fas fa-times text-xl"></i></button>
                 </div>
                 <div class="p-6">
-                    <form onsubmit="saveSystemUser(event)" class="space-y-4">
+                    <form onsubmit="saveSystemUser(event, '${id}')" class="space-y-4">
                         <div>
                             <label class="block text-sm font-bold mb-1 dark:text-gray-300">الاسم الحقيقي (يظهر في النظام وسجل الحركات)</label>
-                            <input type="text" id="usr_name" required class="form-input font-bold" placeholder="مثال: عصام الطويل">
+                            <input type="text" id="usr_name" required class="form-input font-bold" value="${u.name || ''}" placeholder="مثال: عصام الطويل">
                         </div>
                         <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-sm font-bold mb-1 dark:text-gray-300">اسم المستخدم (للدخول)</label>
-                                <input type="text" id="usr_username" required class="form-input" dir="ltr" placeholder="user123">
+                                <input type="text" id="usr_username" required class="form-input" dir="ltr" value="${u.username || ''}" placeholder="user123">
                             </div>
                             <div>
                                 <label class="block text-sm font-bold mb-1 dark:text-gray-300">كلمة المرور</label>
-                                <input type="text" id="usr_password" required class="form-input" dir="ltr" placeholder="password123">
+                                <input type="text" id="usr_password" required class="form-input" dir="ltr" value="${u.password || ''}" placeholder="password123">
                             </div>
                         </div>
                         <div>
                             <label class="block text-sm font-bold mb-1 dark:text-gray-300">الصلاحية</label>
                             <select id="usr_role" class="form-input font-bold">
-                                <option value="user">موظف (لا يرى الإعدادات)</option>
-                                <option value="admin">مدير نظام (صلاحيات كاملة)</option>
+                                <option value="user" ${u.role === 'user' ? 'selected' : ''}>موظف (لا يرى الإعدادات)</option>
+                                <option value="admin" ${u.role === 'admin' ? 'selected' : ''}>مدير نظام (صلاحيات كاملة)</option>
                             </select>
                         </div>
                         <div class="flex justify-end gap-2 mt-6">
-                            <button type="submit" class="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-800 font-bold shadow-md"><i class="fas fa-check ml-2"></i> إنشاء الحساب</button>
+                            <button type="submit" class="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-800 font-bold shadow-md"><i class="fas fa-check ml-2"></i> ${id !== 'null' && id ? 'حفظ التعديلات' : 'إنشاء الحساب'}</button>
                         </div>
                     </form>
                 </div>
@@ -2095,26 +2193,35 @@
             openModal('userModal', html);
         }
 
-        function saveSystemUser(e) {
+        function saveSystemUser(e, id) {
             e.preventDefault();
             const un = document.getElementById('usr_username').value.trim();
-            if(db.users.find(u => u.username.toLowerCase() === un.toLowerCase())) {
-                showToast('اسم المستخدم موجود مسبقاً، اختر اسماً آخر', 'error');
+            
+            // التحقق من التكرار مع استثناء المستخدم الحالي الذي نقوم بتعديله
+            if(db.users.find(u => u.username.toLowerCase() === un.toLowerCase() && u.id !== id)) {
+                showToast('اسم المستخدم موجود مسبقاً لموظف آخر، اختر اسماً آخر', 'error');
                 return;
             }
 
-            db.users.push({
-                id: generateId(),
+            const data = {
                 name: document.getElementById('usr_name').value.trim(),
                 username: un,
                 password: document.getElementById('usr_password').value.trim(),
                 role: document.getElementById('usr_role').value
-            });
+            };
+
+            if (id !== 'null' && id) {
+                const idx = db.users.findIndex(x => x.id === id);
+                db.users[idx] = { ...db.users[idx], ...data };
+                showToast('تم تعديل الحساب بنجاح', 'success');
+            } else {
+                db.users.push({ id: generateId(), ...data });
+                showToast('تم إنشاء الحساب بنجاح', 'success');
+            }
             
             saveDB();
             closeModal('userModal');
             renderSettings();
-            showToast('تم إنشاء الحساب بنجاح', 'success');
         }
 
         function deleteSystemUser(id) {
@@ -2168,7 +2275,6 @@
             if(!db.tasks) db.tasks = [];
             if(!db.requirements) db.requirements = [];
             if(!db.users) db.users = [{ id: generateId(), username: 'admin', password: '123', name: 'المدير العام (Admin)', role: 'admin' }];
-            saveDB();
         }
 
     </script>
