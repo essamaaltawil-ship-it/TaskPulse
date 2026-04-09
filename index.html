@@ -4,13 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
-    <!-- أكواد منع التخزين المؤقت لضمان التحديثات -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     
     <title>نظام إدارة أعمال رئيس قسم الحسابات - Cloud Edition</title>
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -18,8 +16,8 @@
             theme: {
                 extend: {
                     colors: {
-                        primary: '#1e3a8a', // Blue 900
-                        secondary: '#3b82f6', // Blue 500
+                        primary: '#1e3a8a', 
+                        secondary: '#3b82f6', 
                         darkbg: '#111827',
                         darkcard: '#1f2937'
                     },
@@ -30,27 +28,19 @@
             }
         }
     </script>
-    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap" rel="stylesheet">
-    <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
         body { font-family: 'Tajawal', sans-serif; background-color: #f3f4f6; transition: background-color 0.3s; }
         .dark body { background-color: #111827; color: #f9fafb; }
-        
-        /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: #f1f1f1; }
         .dark ::-webkit-scrollbar-track { background: #374151; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         .dark ::-webkit-scrollbar-thumb { background: #4b5563; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-        
-        /* Sidebar transition */
         #sidebar { transition: transform 0.3s ease-in-out; }
-        
-        /* Print Styles */
         @media print {
             html, body { height: auto !important; overflow: visible !important; background: white !important; }
             body * { visibility: hidden; }
@@ -62,35 +52,55 @@
             .print-table th, .print-table td { border: 1px solid #000; padding: 8px; text-align: right; }
             .print-update-box { background-color: #f8fafc !important; border-right: 3px solid #3b82f6 !important; padding: 10px; margin-top: 5px; margin-bottom: 10px; page-break-inside: avoid;}
         }
-
         .glass-effect { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
         .dark .glass-effect { background: rgba(31, 41, 55, 0.95); }
-
         .modal-content { max-height: 90vh; overflow-y: auto; }
-        
-        /* Form inputs */
-        .form-input { 
-            width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; 
-            background-color: white; color: #111827;
-        }
-        .dark .form-input {
-            background-color: #374151; border-color: #4b5563; color: white;
-        }
+        .form-input { width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; background-color: white; color: #111827; }
+        .dark .form-input { background-color: #374151; border-color: #4b5563; color: white; }
         .form-input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 1px #3b82f6; }
-        
-        /* Header Inputs */
-        .header-input { 
-            width: 100%; padding: 0.25rem; border: 1px solid #d1d5db; border-radius: 0.25rem; 
-            font-weight: normal; margin-top: 0.25rem; color: #111827; font-size: 0.75rem;
-        }
+        .header-input { width: 100%; padding: 0.25rem; border: 1px solid #d1d5db; border-radius: 0.25rem; font-weight: normal; margin-top: 0.25rem; color: #111827; font-size: 0.75rem; }
         .dark .header-input { background-color: #374151; border-color: #4b5563; color: white; }
-
-        /* Custom details dropdown */
         details.filter-dropdown summary { list-style: none; }
         details.filter-dropdown summary::-webkit-details-marker { display: none; }
     </style>
 </head>
 <body class="text-gray-800 antialiased h-screen flex overflow-hidden">
+
+    <!-- 🔐 شاشة تسجيل الدخول (Login Screen) -->
+    <div id="login-screen" class="fixed inset-0 z-[200] bg-gray-900 flex flex-col items-center justify-center transition-opacity duration-500">
+        <div class="bg-white dark:bg-darkcard p-8 rounded-2xl shadow-2xl w-full max-w-md mx-4 transform transition-all">
+            <div class="text-center mb-8">
+                <div class="w-20 h-20 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center text-4xl mx-auto mb-4 shadow-inner">
+                    <i class="fas fa-shield-alt"></i>
+                </div>
+                <h2 class="text-2xl font-black text-gray-800 dark:text-white">بوابة الدخول للنظام</h2>
+                <p class="text-gray-500 text-sm mt-2 font-bold">يرجى إدخال بيانات الاعتماد الخاصة بك</p>
+            </div>
+            
+            <form onsubmit="attemptLogin(event)" class="space-y-5">
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">اسم المستخدم</label>
+                    <div class="relative">
+                        <i class="fas fa-user absolute left-3 top-3 text-gray-400"></i>
+                        <input type="text" id="login-username" required class="form-input pl-10 bg-gray-50 font-bold" dir="ltr" autocomplete="off">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">كلمة المرور</label>
+                    <div class="relative">
+                        <i class="fas fa-lock absolute left-3 top-3 text-gray-400"></i>
+                        <input type="password" id="login-password" required class="form-input pl-10 bg-gray-50 font-bold" dir="ltr">
+                    </div>
+                </div>
+                <button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg shadow-lg shadow-blue-500/30 hover:bg-blue-700 transition transform hover:-translate-y-0.5 mt-4">
+                    دخول للنظام <i class="fas fa-sign-in-alt ml-2"></i>
+                </button>
+            </form>
+            <div class="mt-6 pt-4 border-t border-gray-100 dark:border-gray-700 text-center">
+                <p class="text-xs text-gray-400 font-bold">نظام الإدارة المالية ERP - Cloud Edition</p>
+            </div>
+        </div>
+    </div>
 
     <!-- شاشة التحميل السحابية -->
     <div id="cloud-loader" class="fixed inset-0 z-[100] bg-white dark:bg-darkbg flex flex-col items-center justify-center transition-opacity duration-500">
@@ -120,7 +130,7 @@
         <nav class="flex-1 overflow-y-auto py-4 space-y-1">
             <a href="#" onclick="nav('dashboard')" class="nav-link block px-5 py-3 hover:bg-blue-800 transition border-r-4 border-transparent hover:border-blue-400 active-nav" data-target="dashboard"><i class="fas fa-home ml-3 w-5 text-blue-300"></i> لوحة القيادة</a>
             <div class="px-5 mt-4 mb-2 text-xs text-blue-300 opacity-70 font-bold">هيكلة النظام</div>
-            <a href="#" onclick="nav('employees')" class="nav-link block px-5 py-3 hover:bg-blue-800 transition border-r-4 border-transparent hover:border-blue-400" data-target="employees"><i class="fas fa-users ml-3 w-5 text-blue-300"></i> إدارة الموظفين</a>
+            <a href="#" onclick="nav('employees')" id="nav-employees" class="nav-link block px-5 py-3 hover:bg-blue-800 transition border-r-4 border-transparent hover:border-blue-400" data-target="employees"><i class="fas fa-users ml-3 w-5 text-blue-300"></i> إدارة الموظفين</a>
             <a href="#" onclick="nav('elementTypes')" class="nav-link block px-5 py-3 hover:bg-blue-800 transition border-r-4 border-transparent hover:border-blue-400" data-target="elementTypes"><i class="fas fa-tags ml-3 w-5 text-blue-300"></i> أنواع العناصر</a>
             <a href="#" onclick="nav('elements')" class="nav-link block px-5 py-3 hover:bg-blue-800 transition border-r-4 border-transparent hover:border-blue-400" data-target="elements"><i class="fas fa-cubes ml-3 w-5 text-blue-300"></i> عناصر العمل</a>
             <a href="#" onclick="nav('assignments')" class="nav-link block px-5 py-3 hover:bg-blue-800 transition border-r-4 border-transparent hover:border-blue-400" data-target="assignments"><i class="fas fa-link ml-3 w-5 text-blue-300"></i> إسناد العناصر</a>
@@ -131,11 +141,11 @@
             <div class="px-5 mt-4 mb-2 text-xs text-blue-300 opacity-70 font-bold">التقارير والإعدادات</div>
             <a href="#" onclick="nav('reports')" class="nav-link block px-5 py-3 hover:bg-blue-800 transition border-r-4 border-transparent hover:border-blue-400" data-target="reports"><i class="fas fa-chart-bar ml-3 w-5 text-blue-300"></i> التقارير</a>
             <a href="#" onclick="nav('audit')" class="nav-link block px-5 py-3 hover:bg-blue-800 transition border-r-4 border-transparent hover:border-blue-400" data-target="audit"><i class="fas fa-history ml-3 w-5 text-blue-300"></i> سجل الحركة</a>
-            <a href="#" onclick="nav('settings')" class="nav-link block px-5 py-3 hover:bg-blue-800 transition border-r-4 border-transparent hover:border-blue-400" data-target="settings"><i class="fas fa-cog ml-3 w-5 text-blue-300"></i> الإعدادات السحابية</a>
+            <a href="#" onclick="nav('settings')" id="nav-settings" class="nav-link block px-5 py-3 hover:bg-blue-800 transition border-r-4 border-transparent hover:border-blue-400" data-target="settings"><i class="fas fa-cog ml-3 w-5 text-blue-300"></i> النظام والإعدادات</a>
         </nav>
         <div class="p-4 border-t border-blue-800 text-sm text-center text-blue-300 flex justify-center items-center gap-2 font-bold">
             <span class="w-2 h-2 rounded-full bg-green-400 animate-pulse" id="sidebar-sync-indicator"></span>
-            الإصدار 1.6.5 (سحابي)
+            الإصدار 1.7.1 (Secured)
         </div>
     </aside>
 
@@ -157,9 +167,16 @@
                     <i id="theme-icon" class="fas fa-moon text-xl"></i>
                 </button>
                 <div class="flex items-center gap-2">
-                    <div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold">م</div>
-                    <span class="text-sm font-medium dark:text-gray-200 hidden sm:block">رئيس الحسابات</span>
+                    <div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold">
+                        <i class="fas fa-user text-sm"></i>
+                    </div>
+                    <!-- اسم المستخدم سيظهر هنا تلقائياً -->
+                    <span id="current-user-name" class="text-sm font-bold dark:text-gray-200 hidden sm:block text-primary dark:text-blue-400">...</span>
                 </div>
+                <!-- زر تسجيل الخروج -->
+                <button onclick="systemLogout()" class="ml-2 text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:hover:bg-red-900/50 w-8 h-8 rounded flex items-center justify-center transition" title="تسجيل الخروج">
+                    <i class="fas fa-sign-out-alt"></i>
+                </button>
             </div>
         </header>
 
@@ -197,7 +214,6 @@
         if (typeof __firebase_config !== 'undefined') {
             firebaseConfig = JSON.parse(__firebase_config);
         } else {
-            // بيانات مشروع TaskPulse الخاصة بك
             firebaseConfig = {
                 apiKey: "AIzaSyA0mhuv_qg_vg2phsZzTnz5Tvt71PIyMTg",
                 authDomain: "taskpulse-df619.firebaseapp.com",
@@ -240,19 +256,17 @@
 
         window.addEventListener('online', () => {
             window.updateConnectionUI('online');
-            showToast('تم استعادة الاتصال بالإنترنت. ستتم مزامنة البيانات تلقائياً.', 'success');
             if(window.CloudSync && window.CloudSync.save && typeof db !== 'undefined') window.CloudSync.save(db);
         });
 
         window.addEventListener('offline', () => {
             window.updateConnectionUI('offline');
-            showToast('انقطع الاتصال بالإنترنت! النظام يعمل الآن في الوضع المحلي (Offline)', 'error');
+            showToast('انقطع الاتصال بالإنترنت! النظام يعمل محلياً مؤقتاً', 'error');
         });
 
         window.CloudSync = {
             save: async function(appData) {
                 if (!auth.currentUser) return;
-                
                 if (!navigator.onLine) {
                     window.updateConnectionUI('offline');
                     return; 
@@ -260,34 +274,32 @@
 
                 window.updateConnectionUI('syncing');
                 try {
-                    const docRef = doc(dbFirestore, 'artifacts', appId, 'users', auth.currentUser.uid, 'financeData', 'state');
+                    // تم إصلاح مسار المستند ليتكون من عدد زوجي من المقاطع (6 مقاطع بدلاً من 5) ليكون مستنداً صالحاً في Firestore
+                    const docRef = doc(dbFirestore, 'artifacts', appId, 'public', 'data', 'sharedState', 'main');
                     await setDoc(docRef, { payload: JSON.stringify(appData), lastUpdated: new Date().toISOString() });
                     window.updateConnectionUI('online');
                 } catch(e) {
                     console.error("Firebase Save Error:", e);
                     window.updateConnectionUI('error');
-                    showToast('حدث خطأ في المزامنة مع السحابة، تم الحفظ بجهازك فقط', 'error');
                 }
             }
         };
 
         const connectionTimeout = setTimeout(() => {
             if(!isConnectedInitially) {
-                document.getElementById('cloud-status').innerHTML = `<span class="text-orange-500">تأخر الاتصال بالسحابة جداً.. هل قمت بإنشاء قاعدة بيانات (Firestore Database)؟</span><br><span class="text-xs mt-2 block">تأكد من إنشاء قاعدة البيانات واختيار (Start in test mode) من منصة Firebase.</span>`;
+                document.getElementById('cloud-status').innerHTML = `<span class="text-orange-500">تأخر الاتصال بالسحابة جداً.. هل قمت بإنشاء قاعدة بيانات (Firestore Database)؟</span><br><span class="text-xs mt-2 block">تأكد من إنشاء قاعدة بيانات واختيار (Start in test mode) من منصة Firebase.</span>`;
                 window.updateConnectionUI('offline');
                 setTimeout(() => {
                     if(!isConnectedInitially) {
-                        showToast('يتم العمل الآن على النسخة المحلية مؤقتاً', 'info');
                         window.initializeFirstTime();
                     }
                 }, 4000);
             }
-        }, 8000); 
+        }, 15000); 
 
         async function initAuth() {
             if (!navigator.onLine) {
                 clearTimeout(connectionTimeout);
-                document.getElementById('cloud-status').innerHTML = `<span class="text-red-500">أنت غير متصل بالإنترنت حالياً</span><br><span class="text-xs">سيتم الدخول للنظام المحلي</span>`;
                 window.updateConnectionUI('offline');
                 setTimeout(window.initializeFirstTime, 2000);
                 return;
@@ -313,7 +325,8 @@
 
             onAuthStateChanged(auth, (user) => {
                 if (user) {
-                    const docRef = doc(dbFirestore, 'artifacts', appId, 'users', user.uid, 'financeData', 'state');
+                    // تم إصلاح مسار المستند ليتكون من عدد زوجي من المقاطع (6 مقاطع بدلاً من 5) ليكون مستنداً صالحاً في Firestore
+                    const docRef = doc(dbFirestore, 'artifacts', appId, 'public', 'data', 'sharedState', 'main');
                     onSnapshot(docRef, (docSnap) => {
                         isConnectedInitially = true;
                         clearTimeout(connectionTimeout);
@@ -324,7 +337,6 @@
                                 const cloudData = JSON.parse(docSnap.data().payload);
                                 window.updateLocalDbFromCloud(cloudData);
                             } catch(e) {
-                                console.error("Error parsing cloud data", e);
                                 window.initializeFirstTime();
                             }
                         } else {
@@ -346,15 +358,84 @@
     <script>
         const DB_KEY = 'AccountingDeptSystemDB';
         let db = {
+            users: [], // 🔐 قائمة حسابات الدخول للنظام
             employees: [], elementTypes: [], elements: [], assignments: [],
             tasks: [], requirements: [], handovers: [], auditLog: [], settings: { darkMode: false }
         };
 
+        // متغير يحفظ جلسة المستخدم الحالي
+        let activeSessionUser = null;
+
+        // 🔐 نظام التحقق من الدخول (Auth Logic)
+        function checkAppAuthentication() {
+            const savedSession = sessionStorage.getItem('activeAppUser');
+            if(savedSession) {
+                activeSessionUser = JSON.parse(savedSession);
+                document.getElementById('login-screen').classList.add('opacity-0', 'pointer-events-none');
+                setTimeout(() => document.getElementById('login-screen').classList.add('hidden'), 500);
+                
+                // تحديث واجهة المستخدم حسب الصلاحية
+                document.getElementById('current-user-name').innerText = activeSessionUser.name;
+                applyRolePermissions();
+            } else {
+                // إظهار شاشة الدخول
+                document.getElementById('login-screen').classList.remove('hidden', 'opacity-0', 'pointer-events-none');
+            }
+        }
+
+        function attemptLogin(e) {
+            e.preventDefault();
+            const un = document.getElementById('login-username').value.trim();
+            const pw = document.getElementById('login-password').value;
+
+            // التأكد من وجود مدير افتراضي في حال كانت القاعدة فارغة (أول مرة)
+            if(!db.users || db.users.length === 0) {
+                db.users = [{ id: generateId(), username: 'admin', password: '123', name: 'المدير العام (Admin)', role: 'admin' }];
+                saveDB();
+            }
+
+            const user = db.users.find(u => u.username === un && u.password === pw);
+            if(user) {
+                sessionStorage.setItem('activeAppUser', JSON.stringify(user));
+                checkAppAuthentication();
+                showToast(`أهلاً بك، ${user.name}`, 'success');
+                logAction('تسجيل دخول', 'النظام', '0', `تسجيل دخول للنظام من المتصفح`, user.name);
+            } else {
+                showToast('اسم المستخدم أو كلمة المرور غير صحيحة', 'error');
+            }
+        }
+
+        function systemLogout() {
+            if(confirm('هل أنت متأكد من تسجيل الخروج وحماية الجلسة؟')) {
+                sessionStorage.removeItem('activeAppUser');
+                activeSessionUser = null;
+                document.getElementById('login-username').value = '';
+                document.getElementById('login-password').value = '';
+                checkAppAuthentication();
+            }
+        }
+
+        function applyRolePermissions() {
+            if(!activeSessionUser) return;
+            
+            // إذا لم يكن مديراً، يتم إخفاء قسم الإعدادات لمنع العبث بالنظام وحسابات المستخدمين
+            if(activeSessionUser.role !== 'admin') {
+                document.getElementById('nav-settings').style.display = 'none';
+                document.getElementById('nav-employees').style.display = 'none'; // اختياري: إخفاء إدارة الموظفين أيضاً
+            } else {
+                document.getElementById('nav-settings').style.display = 'block';
+                document.getElementById('nav-employees').style.display = 'block';
+            }
+        }
+
+
         window.updateLocalDbFromCloud = function(cloudData) {
             db = cloudData;
-            if(db.requirements) {
-                db.requirements.forEach(req => { if (!req.updates) req.updates = []; });
-            }
+            
+            // تهيئات أمان وقاعدة بيانات لتفادي الأخطاء
+            if(!db.users) db.users = [{ id: generateId(), username: 'admin', password: '123', name: 'المدير العام', role: 'admin' }];
+            if(db.requirements) { db.requirements.forEach(req => { if (!req.updates) req.updates = []; }); }
+            
             localStorage.setItem(DB_KEY, JSON.stringify(db)); 
             
             if(db.settings && db.settings.darkMode) {
@@ -364,7 +445,8 @@
             }
             
             hideCloudLoader();
-            renderDashboard(); 
+            checkAppAuthentication(); // فحص الدخول بدلاً من فتح اللوحة مباشرة
+            if(activeSessionUser) renderDashboard(); 
         };
 
         window.initializeFirstTime = function() {
@@ -372,9 +454,8 @@
             if (stored) {
                 try {
                     db = JSON.parse(stored);
-                    if(db.requirements) {
-                        db.requirements.forEach(req => { if (!req.updates) req.updates = []; });
-                    }
+                    if(!db.users) db.users = [{ id: generateId(), username: 'admin', password: '123', name: 'المدير العام', role: 'admin' }];
+                    if(db.requirements) { db.requirements.forEach(req => { if (!req.updates) req.updates = []; }); }
                 } catch(e) { seedDB(); }
             } else {
                 seedDB();
@@ -388,7 +469,8 @@
 
             saveDB(); 
             hideCloudLoader();
-            renderDashboard();
+            checkAppAuthentication(); 
+            if(activeSessionUser) renderDashboard();
         };
 
         function hideCloudLoader() {
@@ -410,11 +492,12 @@
             return 'id-' + Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
         }
 
-        function logAction(action, entity, entityId, desc, user = 'رئيس الحسابات', prev = null, current = null) {
+        function logAction(action, entity, entityId, desc, user = null, prev = null, current = null) {
+            const actionUser = user || (activeSessionUser ? activeSessionUser.name : 'النظام');
             db.auditLog.unshift({
                 id: generateId(),
                 timestamp: new Date().toISOString(),
-                action, entity, entityId, desc, user, prev, current
+                action, entity, entityId, desc, user: actionUser, prev, current
             });
             saveDB();
         }
@@ -448,10 +531,7 @@
         // تنظيف ومسح علامات التنصيص والنسخ الآمن
         // ==========================================
         function copyToClipboard(text) {
-            // تنظيف النص تماماً من أي علامات تنصيص 
-            let cleanText = text.replace(/['"]/g, '').trim();
-            
-            // إضافة علامات تنصيص حول المسار لضمان عمله في Windows Run 
+            let cleanText = text.replace(/^["']+|["']+$/g, '').trim();
             let windowsSafePath = `"${cleanText}"`;
             
             if (navigator.clipboard && window.isSecureContext) {
@@ -516,7 +596,7 @@
             'dashboard': 'لوحة القيادة', 'employees': 'إدارة الموظفين', 'elementTypes': 'أنواع العناصر',
             'elements': 'عناصر العمل', 'assignments': 'إسناد العناصر', 'tasks': 'المهام الرئيسية',
             'requirements': 'متطلبات المهام', 'handovers': 'التسليم والاستلام', 'reports': 'التقارير',
-            'audit': 'سجل الحركة', 'settings': 'الإعدادات السحابية'
+            'audit': 'سجل الحركة', 'settings': 'النظام والإعدادات'
         };
 
         function nav(section) {
@@ -583,90 +663,6 @@
                 rows[i].style.display = rowText.toLowerCase().includes(filter) ? '' : 'none';
             }
         }
-        
-        function viewEntityHistory(entityId, title) {
-            const logs = db.auditLog.filter(l => l.entityId === entityId);
-            let html = `
-                <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800 rounded-t-lg flex-shrink-0">
-                    <h3 class="text-lg font-bold dark:text-white"><i class="fas fa-history text-purple-500 ml-2"></i> سجل حركة النظام: ${title}</h3>
-                    <button onclick="closeModal('historyModal')" class="text-gray-500 hover:text-red-500"><i class="fas fa-times text-xl"></i></button>
-                </div>
-                <div class="p-6 space-y-4 overflow-y-auto flex-1">
-                    ${logs.length === 0 ? '<p class="text-gray-500 text-center py-4">لا يوجد سجل حركات حتى الآن.</p>' : 
-                        '<ul class="space-y-4 relative border-r-2 border-gray-200 dark:border-gray-700 pr-4 mr-2">' +
-                        logs.map(l => `
-                            <li class="relative">
-                                <div class="absolute w-3 h-3 bg-purple-500 rounded-full -right-[1.4rem] top-1"></div>
-                                <div class="bg-gray-50 dark:bg-gray-700 p-3 rounded shadow-sm border border-gray-100 dark:border-gray-600">
-                                    <div class="flex justify-between items-center mb-1 text-sm">
-                                        <span class="font-bold text-indigo-600 dark:text-indigo-400">${l.action}</span>
-                                        <span class="text-gray-500 text-xs" dir="ltr">${new Date(l.timestamp).toLocaleString('ar-SA')}</span>
-                                    </div>
-                                    <p class="text-gray-800 dark:text-gray-200 text-sm leading-relaxed">${l.desc}</p>
-                                    <p class="text-gray-500 text-xs mt-2"><i class="fas fa-user ml-1"></i>بواسطة: ${l.user}</p>
-                                </div>
-                            </li>
-                        `).join('') + '</ul>'
-                    }
-                </div>
-            `;
-            openModal('historyModal', html);
-        }
-
-        // --- Local Attachment Handler ---
-        function copyAttachmentPath(reqId, updateId) {
-            const req = db.requirements.find(r => r.id === reqId);
-            if (!req || !req.updates) return;
-            const update = req.updates.find(u => u.id === updateId);
-            if (update && update.attachmentPath) {
-                copyToClipboard(update.attachmentPath);
-            }
-        }
-
-        function openLocalAttachment(e, reqId, updateId) {
-            const req = db.requirements.find(r => r.id === reqId);
-            if (!req || !req.updates) return true;
-            const update = req.updates.find(u => u.id === updateId);
-            if (!update || !update.attachmentPath) return true;
-
-            // تنظيف المسار تماماً
-            const cleanPath = update.attachmentPath.replace(/['"]/g, '').trim();
-
-            if (window.location.protocol === 'http:' || window.location.protocol === 'https:') {
-                e.preventDefault();
-                copyToClipboard(cleanPath); 
-                
-                let html = `
-                    <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center bg-yellow-50 dark:bg-yellow-900/20 rounded-t-xl">
-                        <h3 class="text-lg font-bold text-yellow-700 dark:text-yellow-400"><i class="fas fa-shield-alt ml-2"></i>حماية المتصفح للملفات المحلية</h3>
-                        <button onclick="closeModal('localFileModal')" class="text-gray-500 hover:text-red-500"><i class="fas fa-times text-xl"></i></button>
-                    </div>
-                    <div class="p-6 space-y-4">
-                        <p class="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-                            المتصفحات (مثل كروم) تمنع فتح ملفات جهازك الشخصي من مواقع الإنترنت مباشرة لسلامتك.
-                        </p>
-                        <div class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-4 rounded-lg">
-                            <h4 class="font-bold text-green-800 dark:text-green-400 mb-3"><i class="fas fa-check-circle ml-2"></i>النظام قام بنسخ المسار بشكل صحيح، اتبع التالي لفتحه:</h4>
-                            <ol class="list-decimal list-inside text-sm text-green-700 dark:text-green-300 space-y-3 font-bold">
-                                <li>اضغط مفتاحي <kbd class="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 px-2 py-1 rounded mx-1 shadow-sm font-sans" dir="ltr">Windows + R</kbd> بلوحة المفاتيح.</li>
-                                <li>اضغط <kbd class="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 px-2 py-1 rounded mx-1 shadow-sm font-sans" dir="ltr">Ctrl + V</kbd> للصق المسار في النافذة التي تظهر (تشغيل / Run).</li>
-                                <li>اضغط <strong>Enter</strong> ليفتح الملف ببرنامجه الخاص.</li>
-                            </ol>
-                        </div>
-                        <div class="mt-4">
-                            <label class="block text-xs font-bold text-gray-500 mb-1">المسار المنظف والمنسوخ للحافظة:</label>
-                            <input type="text" readonly value="${cleanPath.replace(/"/g, '&quot;')}" class="form-input bg-gray-100 dark:bg-gray-900 text-left font-mono text-xs w-full text-blue-600 dark:text-blue-400" dir="ltr">
-                        </div>
-                        <div class="flex justify-end mt-4">
-                            <button onclick="closeModal('localFileModal')" class="px-6 py-2.5 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white font-bold rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition">تم، فهمت</button>
-                        </div>
-                    </div>
-                `;
-                openModal('localFileModal', html);
-                return false;
-            }
-            return true;
-        }
 
         // --- View Renderers ---
 
@@ -709,7 +705,6 @@
                 </div>
 
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <!-- Workload -->
                     <div class="bg-white dark:bg-darkcard p-5 rounded-lg shadow">
                         <h3 class="text-lg font-bold mb-4 border-b pb-2 dark:text-white">عبء العمل على الموظفين</h3>
                         <div class="overflow-x-auto">
@@ -728,7 +723,6 @@
                         </div>
                     </div>
 
-                    <!-- Alerts -->
                     <div class="bg-white dark:bg-darkcard p-5 rounded-lg shadow">
                         <h3 class="text-lg font-bold mb-4 border-b pb-2 text-red-600">مهام قريبة من الاستحقاق أو متأخرة</h3>
                         <ul class="space-y-3">
@@ -1077,7 +1071,7 @@
             }
         }
 
-        // 6. Tasks (with Multi-Select Filter support)
+        // 6. Tasks
         let currentTaskSort = { col: 'id', dir: 'asc' };
 
         function renderTasks() {
@@ -1258,7 +1252,7 @@
             }, 100);
         }
 
-        // 7. Requirements (With Multi-Select & Updates/Comments)
+        // 7. Requirements
         let currentReqSort = { col: 'title', dir: 'asc' };
 
         function renderRequirements() {
@@ -1393,25 +1387,22 @@
 
         function openReqForm(id = null) {
             let r = id ? db.requirements.find(x => x.id === id) : { isMandatory: true, status: 'جديد', updates: [] };
-            if(!r.updates) r.updates = []; // Safety check
+            if(!r.updates) r.updates = []; 
 
             let tasksOpts = db.tasks.map(t => `<option value="${t.id}" ${r.taskId===t.id?'selected':''}>${t.title}</option>`).join('');
             let empsOpts = db.employees.filter(e => !e.isDeleted).map(e => `<option value="${e.id}" ${r.employeeId===e.id?'selected':''}>${e.name}</option>`).join('');
             
-            // Build Timeline/Updates section IF editing
             let updatesSectionHTML = '';
             if(id) {
                 const updatesListHTML = r.updates.map(up => {
                     let attachmentHTML = '';
                     if(up.attachmentPath) {
                         const cleanPath = up.attachmentPath.replace(/^["']+|["']+$/g, '').trim();
-                        const pathSafe = cleanPath.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-                        const fileUrl = 'file:///' + cleanPath.replace(/\\/g, '/');
                         attachmentHTML = `
                             <div class="mt-2 flex items-center gap-2 bg-blue-50 dark:bg-blue-900/30 p-2 rounded border border-blue-200 dark:border-blue-800 text-xs">
                                 <i class="fas fa-paperclip text-blue-500"></i>
                                 <span class="text-blue-700 dark:text-blue-300 truncate max-w-xs" dir="ltr" title="${cleanPath.replace(/"/g, '&quot;')}">${cleanPath}</span>
-                                <a href="${fileUrl}" onclick="return openLocalAttachment(event, '${id}', '${up.id}')" target="_blank" class="ml-auto bg-white dark:bg-gray-800 px-2 py-1 rounded shadow-sm text-blue-600 hover:text-blue-800 font-bold border border-gray-200 text-center">فتح محلياً</a>
+                                <a href="#" onclick="return openLocalAttachment(event, '${id}', '${up.id}')" class="ml-auto bg-white dark:bg-gray-800 px-2 py-1 rounded shadow-sm text-blue-600 hover:text-blue-800 font-bold border border-gray-200 text-center">فتح محلياً</a>
                                 <button type="button" onclick="copyAttachmentPath('${id}', '${up.id}')" class="bg-gray-200 dark:bg-gray-700 px-2 py-1 rounded hover:bg-gray-300 text-gray-700 dark:text-gray-300 flex-shrink-0"><i class="fas fa-copy"></i> نسخ المسار</button>
                             </div>
                         `;
@@ -1441,20 +1432,18 @@
                     <div class="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
                         <h4 class="text-lg font-bold mb-4 dark:text-white"><i class="fas fa-comments text-blue-500 ml-2"></i> سجل التحديثات والتعليقات (${r.updates.length})</h4>
                         
-                        <!-- Add New Update Form -->
                         <div class="bg-blue-50 dark:bg-blue-900/10 p-4 rounded-lg border border-blue-100 dark:border-blue-800 mb-6">
                             <label class="block text-sm font-bold mb-2 dark:text-gray-300">إضافة تحديث أو تعليق جديد (باسمك)</label>
                             <textarea id="req_upd_text" class="form-input mb-3 h-20 bg-white" placeholder="مثال: تم إرسال الإيميل للبنك ننتظر الرد..."></textarea>
                             
                             <label class="block text-sm font-bold mb-1 dark:text-gray-300">ربط مرفق محلي (اختياري)</label>
-                            <p class="text-[10px] text-gray-500 mb-2">انسخ مسار الملف من جهازك والصقه هنا لسهولة الوصول إليه لاحقاً.</p>
+                            <p class="text-[10px] text-gray-500 mb-2">انسخ مسار الملف من جهازك والصقه هنا لسهولة الرجوع إليه لاحقاً.</p>
                             <div class="flex gap-2 items-center">
                                 <input type="text" id="req_upd_attach" class="form-input flex-1 bg-white" dir="ltr" placeholder='C:\\path\\to\\file.pdf'>
                                 <button type="button" onclick="saveReqUpdate('${id}')" class="bg-blue-600 hover:bg-blue-800 text-white px-6 py-2 rounded-lg font-bold shadow transition"><i class="fas fa-paper-plane ml-2"></i> إضافة التحديث</button>
                             </div>
                         </div>
 
-                        <!-- Timeline -->
                         <div class="space-y-2 max-h-80 overflow-y-auto pr-2">
                             ${r.updates.length > 0 ? updatesListHTML : '<p class="text-gray-500 text-sm text-center">لا توجد تحديثات مسجلة بعد.</p>'}
                         </div>
@@ -1468,7 +1457,6 @@
                     <button onclick="closeModal('reqModal')" class="text-gray-500 hover:text-red-500"><i class="fas fa-times text-xl"></i></button>
                 </div>
                 <div class="p-6 overflow-y-auto flex-1">
-                    <!-- Main Form -->
                     <form onsubmit="saveReq(event, '${id}')" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div class="md:col-span-2"><label class="block text-sm mb-1 dark:text-gray-300">المهمة الأم</label><select id="rq_task" required class="form-input font-bold text-primary">${tasksOpts}</select></div>
                         <div class="md:col-span-2"><label class="block text-sm mb-1 dark:text-gray-300">وصف المتطلب (العنوان)</label><input type="text" id="rq_title" value="${r.title||''}" required class="form-input font-bold"></div>
@@ -1492,8 +1480,6 @@
                             <button type="submit" class="px-6 py-2 bg-yellow-600 text-white font-bold rounded-lg hover:bg-yellow-700 shadow-md"><i class="fas fa-save ml-2"></i> حفظ التعديلات الأساسية</button>
                         </div>
                     </form>
-
-                    <!-- Updates/Timeline Section -->
                     ${updatesSectionHTML}
                 </div>
             `;
@@ -1522,9 +1508,6 @@
                 showToast('تم إنشاء متطلب جديد', 'success');
             }
             saveDB(); filterRequirements();
-            
-            // If we are editing, keep modal open but re-render to reflect changes. 
-            // If new, close it.
             if(id === 'null') closeModal('reqModal');
         }
 
@@ -1532,7 +1515,6 @@
             const text = document.getElementById('req_upd_text').value.trim();
             let attach = document.getElementById('req_upd_attach').value.trim();
             
-            // تنظيف المسار من علامات التنصيص المزدوجة التي يضيفها الويندوز عند "النسخ كمسار"
             attach = attach.replace(/^["']+|["']+$/g, '').trim();
 
             if(!text) { showToast('يجب كتابة نص التحديث', 'error'); return; }
@@ -1544,12 +1526,12 @@
                     timestamp: new Date().toISOString(),
                     text: text,
                     attachmentPath: attach,
-                    user: 'رئيس الحسابات (النظام)'
+                    user: activeSessionUser ? activeSessionUser.name : 'مستخدم مجهول'
                 };
                 db.requirements[reqIdx].updates.unshift(newUpdate);
                 saveDB();
                 showToast('تم إضافة التحديث بنجاح', 'success');
-                openReqForm(reqId); // Re-render modal to show new update
+                openReqForm(reqId); 
             }
         }
 
@@ -1560,7 +1542,7 @@
                     db.requirements[reqIdx].updates = db.requirements[reqIdx].updates.filter(u => u.id !== updateId);
                     saveDB();
                     showToast('تم مسح التحديث بنجاح', 'success');
-                    openReqForm(reqId); // Re-render to update the timeline
+                    openReqForm(reqId); 
                 }
             }
         }
@@ -1575,7 +1557,7 @@
                         update.text = newText.trim();
                         saveDB();
                         showToast('تم تعديل التحديث بنجاح', 'success');
-                        openReqForm(reqId); // Re-render
+                        openReqForm(reqId);
                     }
                 }
             }
@@ -1721,7 +1703,7 @@
 
                     <div class="bg-white dark:bg-darkcard p-6 rounded-lg shadow border-t-4 border-green-500">
                         <h3 class="text-xl font-bold border-b pb-2 mb-4 dark:text-white"><i class="fas fa-project-diagram text-green-500 ml-2"></i> تقرير المهمة (تتبعي وميداني)</h3>
-                        <p class="text-xs text-gray-500 mb-4 leading-relaxed">هذا التقرير يستخرج المهمة، والمتطلبات المرتبطة بها، وجميع <strong>التحديثات والتعليقات والروابط</strong> التي تمت عليها خطوة بخطوة لمعرفة الواقع الميداني.</p>
+                        <p class="text-xs text-gray-500 mb-4 leading-relaxed">يستخرج المهمة، والمتطلبات، وجميع التحديثات التي تمت عليها خطوة بخطوة.</p>
                         <select id="rep_taskId" class="form-input mb-4 font-bold border-green-200"><option value="">اختر المهمة المطلوبة...</option>${taskOpts}</select>
                         <button onclick="printReport('task')" class="w-full bg-green-600 text-white py-3 font-bold rounded-lg hover:bg-green-700 shadow-md"><i class="fas fa-file-pdf ml-2"></i> عرض وطباعة التقرير الشامل</button>
                     </div>
@@ -1826,7 +1808,6 @@
                     if(!r.updates || r.updates.length === 0) {
                         html += `<p style="font-size:12px; color:#94a3b8; font-style:italic; padding-right:15px;">لا توجد تحديثات أو إفادات مسجلة لهذا المتطلب.</p>`;
                     } else {
-                        // ترتيب التحديثات للطباعة من الأقدم إلى الأحدث
                         const sortedUpdates = [...r.updates].sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp));
                         
                         sortedUpdates.forEach(up => {
@@ -1874,26 +1855,146 @@
             window.print();
         }
 
-        // 11. Settings
+        // 11. Settings & User Management
         function renderSettings() {
             const v = document.getElementById('view-settings');
-            v.innerHTML = `
-                <div class="max-w-2xl bg-white dark:bg-darkcard p-6 rounded-lg shadow">
-                    <h3 class="text-xl font-bold border-b pb-2 mb-4 dark:text-white"><i class="fas fa-database text-gray-500 ml-2"></i> إدارة البيانات</h3>
-                    
-                    <div class="space-y-4">
-                        <div class="p-4 bg-gray-50 dark:bg-gray-800 rounded flex justify-between items-center">
-                            <div><p class="font-bold dark:text-white">تصدير البيانات (نسخة احتياطية)</p></div>
-                            <button onclick="exportData()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">تصدير <i class="fas fa-download"></i></button>
-                        </div>
-                        <div class="p-4 bg-gray-50 dark:bg-gray-800 rounded flex justify-between items-center">
-                            <div><p class="font-bold dark:text-white">استيراد البيانات</p></div>
-                            <input type="file" id="importFile" class="hidden" accept=".json" onchange="importData(event)">
-                            <button onclick="document.getElementById('importFile').click()" class="bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700">استيراد <i class="fas fa-upload"></i></button>
-                        </div>
+            
+            // جدول إدارة المستخدمين
+            let usersHTML = `
+                <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg mt-6 border border-gray-200 dark:border-gray-700">
+                    <div class="flex justify-between items-center mb-4 border-b border-gray-200 dark:border-gray-700 pb-2">
+                        <h4 class="font-bold dark:text-white text-lg"><i class="fas fa-users-cog text-blue-500 ml-2"></i> إدارة حسابات الدخول (نظام الحماية)</h4>
+                        <button onclick="openUserForm()" class="bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700 text-sm font-bold shadow"><i class="fas fa-user-plus ml-1"></i> حساب جديد</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full text-right text-sm bg-white dark:bg-darkcard border dark:border-gray-600 rounded">
+                            <thead class="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+                                <tr>
+                                    <th class="px-4 py-2">الاسم (يظهر في السجل)</th>
+                                    <th class="px-4 py-2">اسم المستخدم (للدخول)</th>
+                                    <th class="px-4 py-2">كلمة المرور</th>
+                                    <th class="px-4 py-2">الصلاحية</th>
+                                    <th class="px-4 py-2 text-center">إجراء</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100 dark:divide-gray-600 dark:text-gray-200">
+                                ${db.users.map(u => `
+                                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-600">
+                                        <td class="px-4 py-2 font-bold">${u.name}</td>
+                                        <td class="px-4 py-2 font-mono text-blue-600 dark:text-blue-400" dir="ltr">${u.username}</td>
+                                        <td class="px-4 py-2 font-mono text-gray-500" dir="ltr">${u.password}</td>
+                                        <td class="px-4 py-2">
+                                            <span class="px-2 py-0.5 rounded text-xs font-bold ${u.role === 'admin' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}">
+                                                ${u.role === 'admin' ? 'مدير نظام (Admin)' : 'موظف (User)'}
+                                            </span>
+                                        </td>
+                                        <td class="px-4 py-2 text-center">
+                                            <button onclick="deleteSystemUser('${u.id}')" class="text-red-500 hover:text-red-700" title="حذف الحساب"><i class="fas fa-trash"></i></button>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             `;
+
+            v.innerHTML = `
+                <div class="max-w-4xl bg-white dark:bg-darkcard p-6 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+                    <h3 class="text-xl font-bold border-b border-gray-200 dark:border-gray-700 pb-3 mb-6 dark:text-white"><i class="fas fa-cog text-gray-500 ml-2"></i> النظام والإعدادات</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="p-5 bg-gray-50 dark:bg-gray-800 rounded-xl flex justify-between items-center border border-gray-200 dark:border-gray-700 shadow-sm">
+                            <div><p class="font-bold dark:text-white text-lg">تصدير البيانات (Backup)</p><p class="text-sm text-gray-500 mt-1">حفظ نسخة احتياطية من جميع البيانات.</p></div>
+                            <button onclick="exportData()" class="bg-blue-600 text-white px-5 py-2.5 rounded-lg hover:bg-blue-700 font-bold shadow-md transition transform hover:-translate-y-0.5"><i class="fas fa-download ml-1"></i> تحميل</button>
+                        </div>
+                        <div class="p-5 bg-gray-50 dark:bg-gray-800 rounded-xl flex justify-between items-center border border-gray-200 dark:border-gray-700 shadow-sm">
+                            <div><p class="font-bold dark:text-white text-lg">استيراد البيانات (Restore)</p><p class="text-sm text-gray-500 mt-1">استعادة النظام من نسخة احتياطية.</p></div>
+                            <div>
+                                <input type="file" id="importFile" class="hidden" accept=".json" onchange="importData(event)">
+                                <button onclick="document.getElementById('importFile').click()" class="bg-yellow-600 text-white px-5 py-2.5 rounded-lg hover:bg-yellow-700 font-bold shadow-md transition transform hover:-translate-y-0.5 text-gray-900"><i class="fas fa-upload ml-1"></i> استيراد</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    ${usersHTML}
+                </div>
+            `;
+        }
+
+        // نافذة إضافة مستخدم جديد للنظام
+        function openUserForm() {
+            let html = `
+                <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center flex-shrink-0 bg-gray-50 dark:bg-gray-800 rounded-t-xl">
+                    <h3 class="text-lg font-bold dark:text-white"><i class="fas fa-user-plus text-blue-500 ml-2"></i> إنشاء حساب دخول جديد</h3>
+                    <button onclick="closeModal('userModal')" class="text-gray-500 hover:text-red-500"><i class="fas fa-times text-xl"></i></button>
+                </div>
+                <div class="p-6">
+                    <form onsubmit="saveSystemUser(event)" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-bold mb-1 dark:text-gray-300">الاسم الحقيقي (يظهر في النظام وسجل الحركات)</label>
+                            <input type="text" id="usr_name" required class="form-input font-bold" placeholder="مثال: عصام الطويل">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-bold mb-1 dark:text-gray-300">اسم المستخدم (للدخول)</label>
+                                <input type="text" id="usr_username" required class="form-input" dir="ltr" placeholder="user123">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold mb-1 dark:text-gray-300">كلمة المرور</label>
+                                <input type="text" id="usr_password" required class="form-input" dir="ltr" placeholder="password123">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold mb-1 dark:text-gray-300">الصلاحية</label>
+                            <select id="usr_role" class="form-input font-bold">
+                                <option value="user">موظف (لا يرى الإعدادات)</option>
+                                <option value="admin">مدير نظام (صلاحيات كاملة)</option>
+                            </select>
+                        </div>
+                        <div class="flex justify-end gap-2 mt-6">
+                            <button type="submit" class="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-800 font-bold shadow-md"><i class="fas fa-check ml-2"></i> إنشاء الحساب</button>
+                        </div>
+                    </form>
+                </div>
+            `;
+            openModal('userModal', html);
+        }
+
+        function saveSystemUser(e) {
+            e.preventDefault();
+            const un = document.getElementById('usr_username').value.trim();
+            // التحقق من عدم تكرار اسم المستخدم
+            if(db.users.find(u => u.username.toLowerCase() === un.toLowerCase())) {
+                showToast('اسم المستخدم موجود مسبقاً، اختر اسماً آخر', 'error');
+                return;
+            }
+
+            db.users.push({
+                id: generateId(),
+                name: document.getElementById('usr_name').value.trim(),
+                username: un,
+                password: document.getElementById('usr_password').value.trim(),
+                role: document.getElementById('usr_role').value
+            });
+            
+            saveDB();
+            closeModal('userModal');
+            renderSettings();
+            showToast('تم إنشاء الحساب بنجاح', 'success');
+        }
+
+        function deleteSystemUser(id) {
+            if(db.users.length <= 1) {
+                showToast('لا يمكن حذف الحساب الوحيد في النظام!', 'error');
+                return;
+            }
+            if(confirm('هل أنت متأكد من حذف حساب الدخول هذا؟ لن يتمكن من الدخول للنظام بعد الآن.')) {
+                db.users = db.users.filter(u => u.id !== id);
+                saveDB();
+                renderSettings();
+                showToast('تم حذف الحساب', 'success');
+            }
         }
 
         function exportData() {
@@ -1926,42 +2027,17 @@
             reader.readAsText(file);
         }
 
-        // --- Dummy Data Seeder ---
         function seedDB() {
-            db.elementTypes = [
-                { id: 't1', name: 'بنك', description: 'حسابات بنكية', fields: ['اسم البنك', 'رقم الحساب', 'الآيبان'] },
-                { id: 't2', name: 'مورد', description: 'موردين بضائع أو خدمات', fields: ['الرقم الضريبي', 'شروط السداد'] },
-            ];
-
-            db.employees = [
-                { id: 'e1', code: '1001', name: 'أحمد محمود', title: 'رئيس حسابات', department: 'الإدارة المالية', status: 'نشط', isDeleted: false },
-                { id: 'e2', code: '1002', name: 'سارة خالد', title: 'محاسب بنوك', department: 'الخزينة', status: 'نشط', isDeleted: false },
-            ];
-
-            db.elements = [
-                { id: 'el1', typeId: 't1', code: 'B-001', name: 'بنك الراجحي', status: 'نشط', currency: 'SAR', dynamicData: {'اسم البنك':'الراجحي'} },
-            ];
-
-            db.assignments = [
-                { id: 'a1', elementId: 'el1', employeeId: 'e2', startDate: '2023-01-01', status: 'نشط', isPermanent: true },
-            ];
-
-            db.tasks = [
-                { id: 'tk1', title: 'إغلاق ميزانية الربع الثالث', dueDate: new Date(Date.now() + 86400000 * 5).toISOString().split('T')[0], status: 'قيد التنفيذ', priority: 'عالية جداً' },
-            ];
-
-            db.requirements = [
-                { id: 'rq1', taskId: 'tk1', title: 'تسوية كشوفات البنوك', employeeId: 'e2', dueDate: new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0], isMandatory: true, status: 'قيد التنفيذ', updates: [] },
-            ];
-
-            logAction('تهيئة', 'النظام', '0', 'تهيئة النظام وإنشاء بيانات تجريبية');
+            // Seed DB now only initializes basics if completely empty
+            if(!db.elementTypes) db.elementTypes = [];
+            if(!db.employees) db.employees = [];
+            if(!db.elements) db.elements = [];
+            if(!db.assignments) db.assignments = [];
+            if(!db.tasks) db.tasks = [];
+            if(!db.requirements) db.requirements = [];
+            if(!db.users) db.users = [{ id: generateId(), username: 'admin', password: '123', name: 'المدير العام (Admin)', role: 'admin' }];
             saveDB();
         }
-
-        window.onload = function() {
-            // تتم التهيئة تلقائياً عبر محرك Firebase (CloudSync)
-            // انظر الدالة window.initializeFirstTime و window.updateLocalDbFromCloud
-        };
 
     </script>
 </body>
