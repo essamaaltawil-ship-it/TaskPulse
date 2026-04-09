@@ -149,7 +149,7 @@
         </nav>
         <div class="p-4 border-t border-blue-800 text-sm text-center text-blue-300 flex justify-center items-center gap-2 font-bold">
             <span class="w-2 h-2 rounded-full bg-green-400 animate-pulse" id="sidebar-sync-indicator"></span>
-            الإصدار 1.9.0 (Advanced RBAC)
+            الإصدار 1.8.4 (Isolation Fix)
         </div>
     </aside>
 
@@ -463,6 +463,21 @@
             return emp ? emp.id : null;
         };
 
+        window.getAllowedEmployees = function() {
+            if (!window.activeSessionUser) return [];
+            let allEmps = window.db.employees.filter(e => !e.isDeleted);
+            if (window.activeSessionUser.role === 'admin') return allEmps;
+
+            const scope = window.activeSessionUser.assignmentScope || 'self';
+            const myEmpId = window.getCurrentEmployeeId();
+            const specificIds = window.activeSessionUser.specificAssignees || [];
+
+            if (scope === 'all') return allEmps;
+            if (scope === 'specific') return allEmps.filter(e => e.id === myEmpId || specificIds.includes(e.id));
+            
+            return allEmps.filter(e => e.id === myEmpId);
+        };
+
         window.toggleCheckboxes = function(containerClass, state) {
             const checkboxes = document.querySelectorAll('.' + containerClass + ' input[type="checkbox"]');
             checkboxes.forEach(cb => { cb.checked = state; });
@@ -471,7 +486,19 @@
         window.checkAppAuthentication = function() {
             const savedSession = sessionStorage.getItem('activeAppUser');
             if(savedSession) {
-                window.activeSessionUser = JSON.parse(savedSession);
+                let sessionUser = JSON.parse(savedSession);
+                
+                const freshUser = window.db.users.find(u => u.id === sessionUser.id);
+                if (freshUser) {
+                    window.activeSessionUser = freshUser;
+                    sessionStorage.setItem('activeAppUser', JSON.stringify(freshUser));
+                } else {
+                    sessionStorage.removeItem('activeAppUser');
+                    window.activeSessionUser = null;
+                }
+            }
+            
+            if(window.activeSessionUser) {
                 document.getElementById('login-screen').classList.add('opacity-0', 'pointer-events-none');
                 setTimeout(() => document.getElementById('login-screen').classList.add('hidden'), 500);
                 
@@ -535,7 +562,6 @@
                 }
             }
         };
-
 
         window.updateLocalDbFromCloud = function(cloudData) {
             window.db = cloudData;
@@ -765,11 +791,6 @@
             window.saveDB();
         };
 
-        window.getCheckedValues = function(containerClass) {
-            const checkboxes = document.querySelectorAll('.' + containerClass + ' input[type="checkbox"]:checked');
-            return Array.from(checkboxes).map(cb => cb.value);
-        };
-
         const sectionTitles = {
             'dashboard': 'لوحة القيادة', 'employees': 'إدارة الموظفين', 'elementTypes': 'أنواع العناصر',
             'elements': 'عناصر العمل', 'assignments': 'إسناد العناصر', 'tasks': 'المهام الرئيسية',
@@ -846,21 +867,20 @@
             const v = document.getElementById('view-dashboard');
             
             const isAdmin = window.activeSessionUser && window.activeSessionUser.role === 'admin';
-            const canAssignOthers = window.activeSessionUser && window.activeSessionUser.canAssignOthers;
-            const myEmpId = window.getCurrentEmployeeId();
+            const allowedEmpIds = window.getAllowedEmployees().map(e => e.id);
 
+            const myReqs = isAdmin ? window.db.requirements : window.db.requirements.filter(r => allowedEmpIds.includes(r.employeeId));
+            const myTasksIds = [...new Set(myReqs.map(r => r.taskId))];
+            const myTasks = isAdmin ? window.db.tasks : window.db.tasks.filter(t => myTasksIds.includes(t.id) || t.ownerId === window.activeSessionUser.id);
+            const myAssigns = isAdmin ? window.db.assignments : window.db.assignments.filter(a => allowedEmpIds.includes(a.employeeId) && a.status === 'نشط');
+            const myElementIds = [...new Set(myAssigns.map(a => a.elementId))];
+            
             let visibleEmps = window.db.employees.filter(e => !e.isDeleted && e.status === 'نشط');
-            if (!isAdmin && !canAssignOthers) {
-                visibleEmps = visibleEmps.filter(e => e.id === myEmpId);
+            if (!isAdmin) {
+                visibleEmps = visibleEmps.filter(e => allowedEmpIds.includes(e.id));
             }
             const activeEmpCount = visibleEmps.length;
 
-            const myReqs = isAdmin ? window.db.requirements : window.db.requirements.filter(r => r.employeeId === myEmpId);
-            const myTasksIds = [...new Set(myReqs.map(r => r.taskId))];
-            const myTasks = isAdmin ? window.db.tasks : window.db.tasks.filter(t => myTasksIds.includes(t.id));
-            const myAssigns = isAdmin ? window.db.assignments : window.db.assignments.filter(a => a.employeeId === myEmpId && a.status === 'نشط');
-            const myElementIds = [...new Set(myAssigns.map(a => a.elementId))];
-            
             const activeElements = isAdmin ? window.db.elements.filter(e => e.status === 'نشط').length : myElementIds.length;
             const openTasks = myTasks.filter(t => ['جديدة','قيد التنفيذ','بانتظار متطلبات'].includes(t.status)).length;
             const lateTasks = myTasks.filter(t => ['جديدة','قيد التنفيذ','بانتظار متطلبات'].includes(t.status) && new Date(t.dueDate) < new Date()).length;
@@ -1093,12 +1113,14 @@
         };
 
         window.filterElements = function() {
-            const search = document.getElementById('el-search').value.toLowerCase();
+            const searchEl = document.getElementById('el-search');
+            const search = searchEl ? searchEl.value.toLowerCase() : '';
             const tbody = document.getElementById('elements-tbody');
+            if(!tbody) return;
             
             const isAdmin = window.activeSessionUser && window.activeSessionUser.role === 'admin';
-            const myEmpId = window.getCurrentEmployeeId();
-            const myAssigns = window.db.assignments.filter(a => a.employeeId === myEmpId && a.status === 'نشط').map(a => a.elementId);
+            const allowedEmpIds = window.getAllowedEmployees().map(e => e.id);
+            const myAssigns = window.db.assignments.filter(a => allowedEmpIds.includes(a.employeeId) && a.status === 'نشط').map(a => a.elementId);
 
             let filtered = window.db.elements.filter(e => e.name.toLowerCase().includes(search) || e.code.toLowerCase().includes(search));
             
@@ -1213,6 +1235,12 @@
             if(!tbody) return;
 
             let filtered = window.db.assignments.filter(a => a.status === 'نشط');
+            const isAdmin = window.activeSessionUser && window.activeSessionUser.role === 'admin';
+            const allowedEmpIds = window.getAllowedEmployees().map(e => e.id);
+            
+            if (!isAdmin) {
+                filtered = filtered.filter(a => allowedEmpIds.includes(a.employeeId));
+            }
 
             let rowsHTML = filtered.map(a => {
                 const empObj = window.db.employees.find(e => e.id === a.employeeId);
@@ -1236,7 +1264,6 @@
         };
 
         window.openAssignForm = function() {
-            // تصفية الموظفين: الموقوفون لا يظهرون
             let empsOpts = window.db.employees.filter(e => !e.isDeleted && e.status !== 'موقوف').map(e => '<option value="' + e.id + '">' + e.name + '</option>').join('');
             let elsOpts = window.db.elements.filter(e => e.status === 'نشط').map(e => '<option value="' + e.id + '">' + e.name + '</option>').join('');
             
@@ -1354,8 +1381,8 @@
             const selectedStatuses = window.getCheckedValues('filter-status-task');
 
             const isAdmin = window.activeSessionUser && window.activeSessionUser.role === 'admin';
-            const myEmpId = window.getCurrentEmployeeId();
-            const myTaskIds = window.db.requirements.filter(r => r.employeeId === myEmpId).map(r => r.taskId);
+            const allowedEmpIds = window.getAllowedEmployees().map(e => e.id);
+            const myTaskIds = window.db.requirements.filter(r => allowedEmpIds.includes(r.employeeId)).map(r => r.taskId);
 
             let filtered = window.db.tasks.filter(t => {
                 return t.id.toLowerCase().includes(fId) &&
@@ -1365,7 +1392,7 @@
             });
 
             if (!isAdmin) {
-                filtered = filtered.filter(t => myTaskIds.includes(t.id));
+                filtered = filtered.filter(t => myTaskIds.includes(t.id) || t.ownerId === window.activeSessionUser.id);
             }
 
             filtered.sort((a, b) => {
@@ -1458,7 +1485,7 @@
                 window.db.tasks[idx] = { ...window.db.tasks[idx], ...data };
             } else {
                 const newId = window.generateId();
-                window.db.tasks.push({ id: newId, openDate: new Date().toISOString().split('T')[0], ownerId: 'النظام', ...data });
+                window.db.tasks.push({ id: newId, openDate: new Date().toISOString().split('T')[0], ownerId: window.activeSessionUser ? window.activeSessionUser.id : 'النظام', ...data });
             }
             window.saveDB(); window.closeModal('taskModal'); window.renderTasks();
         };
@@ -1477,21 +1504,18 @@
             const v = document.getElementById('view-requirements');
             
             const isAdmin = window.activeSessionUser && window.activeSessionUser.role === 'admin';
-            const canAssignOthers = window.activeSessionUser && window.activeSessionUser.canAssignOthers;
-            const myEmpId = window.getCurrentEmployeeId();
+            const allowedEmpIds = window.getAllowedEmployees().map(e => e.id);
             
-            // عزل المهام في الفلتر: عرض فقط المهام المرتبطة بالموظف
             let availableTasks = window.db.tasks;
-            if (!isAdmin && !canAssignOthers) {
-                const myTaskIds = window.db.requirements.filter(r => r.employeeId === myEmpId).map(r => r.taskId);
-                availableTasks = window.db.tasks.filter(t => myTaskIds.includes(t.id));
+            if (!isAdmin) {
+                const myTaskIds = window.db.requirements.filter(req => allowedEmpIds.includes(req.employeeId)).map(req => req.taskId);
+                availableTasks = window.db.tasks.filter(t => myTaskIds.includes(t.id) || t.ownerId === window.activeSessionUser.id);
             }
             let tasksOpts = availableTasks.map(t => '<option value="' + t.id + '">' + t.title + '</option>').join('');
             
-            // عزل الموظفين في الفلتر
             let availableEmps = window.db.employees.filter(e => !e.isDeleted);
-            if (!isAdmin && !canAssignOthers) {
-                availableEmps = availableEmps.filter(e => e.id === myEmpId);
+            if (!isAdmin) {
+                availableEmps = availableEmps.filter(e => allowedEmpIds.includes(e.id));
             }
             let empOpts = availableEmps.map(e => '<option value="' + e.id + '">' + e.name + '</option>').join('');
 
@@ -1570,8 +1594,7 @@
             const selectedStatuses = window.getCheckedValues('filter-status-req');
 
             const isAdmin = window.activeSessionUser && window.activeSessionUser.role === 'admin';
-            const canAssignOthers = window.activeSessionUser && window.activeSessionUser.canAssignOthers;
-            const myEmpId = window.getCurrentEmployeeId();
+            const allowedEmpIds = window.getAllowedEmployees().map(e => e.id);
 
             let filtered = window.db.requirements.filter(r => {
                 return (fTask === '' || r.taskId === fTask) &&
@@ -1581,8 +1604,8 @@
                        (selectedStatuses.length === 0 || selectedStatuses.includes(r.status));
             });
 
-            if (!isAdmin && !canAssignOthers) {
-                filtered = filtered.filter(r => r.employeeId === myEmpId);
+            if (!isAdmin) {
+                filtered = filtered.filter(r => allowedEmpIds.includes(r.employeeId));
             }
 
             filtered.sort((a, b) => {
@@ -1638,26 +1661,23 @@
             if(!r.updates) r.updates = []; 
 
             const isAdmin = window.activeSessionUser && window.activeSessionUser.role === 'admin';
-            const canAssignOthers = window.activeSessionUser && window.activeSessionUser.canAssignOthers;
-            const myEmpId = window.getCurrentEmployeeId();
+            const allowedEmpIds = window.getAllowedEmployees().map(e => e.id);
 
-            // عزل المهام: عند إضافة متطلب جديد، يعرض للموظف فقط المهام التي هو فيها مسبقاً
             let allowedTasks = window.db.tasks;
             if (!isAdmin) {
-                const myTaskIds = window.db.requirements.filter(req => req.employeeId === myEmpId).map(req => req.taskId);
-                allowedTasks = window.db.tasks.filter(t => myTaskIds.includes(t.id));
+                const myTaskIds = window.db.requirements.filter(req => allowedEmpIds.includes(req.employeeId)).map(req => req.taskId);
+                allowedTasks = window.db.tasks.filter(t => myTaskIds.includes(t.id) || t.ownerId === window.activeSessionUser.id);
             }
             let tasksOpts = allowedTasks.map(t => '<option value="' + t.id + '" ' + (r.taskId===t.id?'selected':'') + '>' + t.title + '</option>').join('');
             
-            // عزل الموظفين وتجاهل الموقوفين
-            let allowedEmps = window.db.employees.filter(e => !e.isDeleted && e.status !== 'موقوف');
-            if (!isAdmin && !canAssignOthers) {
-                allowedEmps = window.db.employees.filter(e => e.id === myEmpId);
+            let allowedEmpsOpts = window.db.employees.filter(e => !e.isDeleted && e.status !== 'موقوف' || e.id === r.employeeId);
+            if (!isAdmin) {
+                allowedEmpsOpts = allowedEmpsOpts.filter(e => allowedEmpIds.includes(e.id));
             }
-            let empsOpts = allowedEmps.map(e => '<option value="' + e.id + '" ' + (r.employeeId===e.id?'selected':'') + '>' + e.name + '</option>').join('');
+            let empsOpts = allowedEmpsOpts.map(e => '<option value="' + e.id + '" ' + (r.employeeId===e.id?'selected':'') + '>' + e.name + '</option>').join('');
             
-            const empSelectDisabled = (!isAdmin && !canAssignOthers) ? 'disabled' : '';
-            
+            const empSelectDisabled = (!isAdmin && allowedEmpIds.length <= 1) ? 'disabled' : '';
+
             let updatesSectionHTML = '';
             if(id) {
                 const sortedUpdates = [...r.updates].sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
@@ -1766,11 +1786,13 @@
         window.saveReq = function(e, id) {
             e.preventDefault();
             const isAdmin = window.activeSessionUser && window.activeSessionUser.role === 'admin';
-            const canAssignOthers = window.activeSessionUser && window.activeSessionUser.canAssignOthers;
-            
-            // إذا كان الموظف مغلق القائمة، نأخذ رقمه الإجباري، وإلا نقرأ من القائمة
+            const allowedEmpIds = window.getAllowedEmployees().map(emp => emp.id);
             const empField = document.getElementById('rq_emp');
-            const finalEmpId = (!isAdmin && !canAssignOthers) ? window.getCurrentEmployeeId() : empField.value;
+            
+            let finalEmpId = empField.value;
+            if (!isAdmin && !allowedEmpIds.includes(finalEmpId)) {
+                finalEmpId = window.getCurrentEmployeeId();
+            }
 
             const data = {
                 taskId: document.getElementById('rq_task').value,
@@ -2056,7 +2078,7 @@
             let html = '';
 
             if (type === 'employee') {
-                const id = document.getElementById('rep_empId').value;
+                const id = document.getElementById('rep_empId').value || directId;
                 if(!id) return;
                 const emp = window.db.employees.find(e => e.id === id);
                 const assigns = window.db.assignments.filter(a => a.employeeId === id && a.status === 'نشط');
@@ -2097,13 +2119,11 @@
                             '<td style="border: 1px solid #000; padding: 5px;">' + emp.title + ' / ' + emp.status + '</td>' +
                         '</tr>' +
                     '</table>' +
-                    
                     '<div style="font-weight: 900; font-size: 13px; background: #1f2937; color: #fff; padding: 4px; text-align: center; border: 2px solid #000; border-bottom: none;">العناصر والأصول المسندة حالياً (' + assigns.length + ')</div>' +
                     '<table style="width: 100%; border-collapse: collapse; border: 2px solid #000; margin-bottom: 15px; font-size: 11px;">' +
                         '<tr style="background:#e2e8f0; font-weight: bold;"><th style="padding: 4px; border: 1px solid #000;">كود العنصر</th><th style="padding: 4px; border: 1px solid #000;">الاسم</th><th style="padding: 4px; border: 1px solid #000;">النوع</th><th style="padding: 4px; border: 1px solid #000;">تاريخ الإسناد</th></tr>' +
                         (assignsHTML || '<tr><td colspan="4" style="text-align:center; padding:5px; color:#555;">لا توجد عناصر مسندة.</td></tr>') +
                     '</table>' +
-                    
                     '<div style="font-weight: 900; font-size: 13px; background: #1f2937; color: #fff; padding: 4px; text-align: center; border: 2px solid #000; border-bottom: none;">المهام والمتطلبات المفتوحة في عهدته (' + reqs.length + ')</div>' +
                     '<table style="width: 100%; border-collapse: collapse; border: 2px solid #000; font-size: 11px;">' +
                         '<tr style="background:#e2e8f0; font-weight: bold;"><th style="padding: 4px; border: 1px solid #000;">وصف المتطلب</th><th style="padding: 4px; border: 1px solid #000;">المهمة الأم (المشروع)</th><th style="padding: 4px; border: 1px solid #000;">الاستحقاق</th><th style="padding: 4px; border: 1px solid #000;">الحالة</th></tr>' +
@@ -2219,7 +2239,7 @@
             let usersRowsHTML = window.db.users.map(u => {
                 let badge = u.role === 'admin' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700';
                 let roleText = u.role === 'admin' ? 'مدير نظام (Admin)' : 'موظف (User)';
-                let assignBadge = u.canAssignOthers ? '<i class="fas fa-check-circle text-green-500 mr-1" title="يملك صلاحية الإسناد لغيره"></i>' : '';
+                let assignBadge = u.assignmentScope && u.assignmentScope !== 'self' ? '<i class="fas fa-check-circle text-green-500 mr-1" title="يملك صلاحية الإسناد لغيره"></i>' : '';
                 return '<tr class="hover:bg-gray-50 dark:hover:bg-gray-600">' +
                     '<td class="px-4 py-2 font-bold">' + u.name + '</td>' +
                     '<td class="px-4 py-2 font-mono text-blue-600 dark:text-blue-400" dir="ltr">' + u.username + '</td>' +
