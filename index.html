@@ -159,9 +159,10 @@
                 <h2 id="page-title" class="text-xl font-bold text-gray-800 dark:text-white">لوحة القيادة</h2>
             </div>
             <div class="flex items-center gap-4">
-                <span id="sync-status" class="hidden md:inline-flex items-center text-xs font-bold text-gray-600 bg-gray-100 px-3 py-1.5 rounded transition-colors duration-300 shadow-sm border border-gray-200">
+                <!-- تم تحويل الحالة إلى زر تفاعلي لفحص الاتصال -->
+                <button id="sync-status" onclick="forceSyncCheck()" title="اضغط لفحص الاتصال والمزامنة" class="hidden md:inline-flex items-center text-xs font-bold text-gray-600 bg-gray-100 px-3 py-1.5 rounded transition-colors duration-300 shadow-sm border border-gray-200 cursor-pointer hover:bg-gray-200">
                     <i class="fas fa-spinner fa-spin ml-1"></i> فحص الاتصال...
-                </span>
+                </button>
                 
                 <button onclick="toggleDarkMode()" class="text-gray-500 hover:text-yellow-500 transition" title="تبديل المظهر">
                     <i id="theme-icon" class="fas fa-moon text-xl"></i>
@@ -237,20 +238,41 @@
             if (!syncIcon) return;
             
             if (status === 'online') {
-                syncIcon.className = "hidden md:inline-flex items-center text-xs font-bold text-green-700 bg-green-100 border border-green-300 px-3 py-1.5 rounded shadow-sm transition-colors duration-300";
+                syncIcon.className = "cursor-pointer hover:bg-green-200 hidden md:inline-flex items-center text-xs font-bold text-green-700 bg-green-100 border border-green-300 px-3 py-1.5 rounded shadow-sm transition-colors duration-300";
                 syncIcon.innerHTML = '<i class="fas fa-wifi ml-2"></i> متصل بالسحابة';
                 if(sideIcon) { sideIcon.className = "w-2 h-2 rounded-full bg-green-400 animate-pulse"; }
             } else if (status === 'offline') {
-                syncIcon.className = "hidden md:inline-flex items-center text-xs font-bold text-red-700 bg-red-100 border border-red-300 px-3 py-1.5 rounded shadow-sm transition-colors duration-300";
-                syncIcon.innerHTML = '<i class="fas fa-network-wired ml-2"></i> غير متصل (وضع محلي)';
+                syncIcon.className = "cursor-pointer hover:bg-red-200 hidden md:inline-flex items-center text-xs font-bold text-red-700 bg-red-100 border border-red-300 px-3 py-1.5 rounded shadow-sm transition-colors duration-300";
+                syncIcon.innerHTML = '<i class="fas fa-network-wired ml-2"></i> وضع محلي (اضغط للاتصال)';
                 if(sideIcon) { sideIcon.className = "w-2 h-2 rounded-full bg-red-500"; }
             } else if (status === 'syncing') {
-                syncIcon.className = "hidden md:inline-flex items-center text-xs font-bold text-blue-700 bg-blue-100 border border-blue-300 px-3 py-1.5 rounded shadow-sm transition-colors duration-300";
+                syncIcon.className = "cursor-pointer hidden md:inline-flex items-center text-xs font-bold text-blue-700 bg-blue-100 border border-blue-300 px-3 py-1.5 rounded shadow-sm transition-colors duration-300";
                 syncIcon.innerHTML = '<i class="fas fa-sync fa-spin ml-2"></i> جاري المزامنة...';
             } else if (status === 'error') {
-                syncIcon.className = "hidden md:inline-flex items-center text-xs font-bold text-yellow-700 bg-yellow-100 border border-yellow-300 px-3 py-1.5 rounded shadow-sm transition-colors duration-300";
-                syncIcon.innerHTML = '<i class="fas fa-exclamation-triangle ml-2"></i> خطأ في المزامنة';
+                syncIcon.className = "cursor-pointer hover:bg-yellow-200 hidden md:inline-flex items-center text-xs font-bold text-yellow-700 bg-yellow-100 border border-yellow-300 px-3 py-1.5 rounded shadow-sm transition-colors duration-300";
+                syncIcon.innerHTML = '<i class="fas fa-exclamation-triangle ml-2"></i> خطأ بالمزامنة (اضغط للفحص)';
                 if(sideIcon) { sideIcon.className = "w-2 h-2 rounded-full bg-yellow-500"; }
+            }
+        };
+
+        // الدالة المسؤولة عن الفحص اليدوي للاتصال عند الضغط على الزر
+        window.forceSyncCheck = async function() {
+            if (!navigator.onLine) {
+                if(typeof showToast !== 'undefined') showToast('أنت غير متصل بالإنترنت حالياً', 'error');
+                window.updateConnectionUI('offline');
+                return;
+            }
+            window.updateConnectionUI('syncing');
+            
+            if (!auth.currentUser) {
+                if(typeof showToast !== 'undefined') showToast('محاولة إعادة الاتصال بالسحابة...', 'info');
+                await initAuth();
+            } else {
+                if(typeof showToast !== 'undefined') showToast('جاري فحص الاتصال ومزامنة البيانات...', 'info');
+                // محاولة دفع البيانات للسحابة للتأكد من الاتصال
+                if (window.CloudSync && window.CloudSync.save && typeof db !== 'undefined') {
+                    window.CloudSync.save(db);
+                }
             }
         };
 
@@ -1394,7 +1416,9 @@
             
             let updatesSectionHTML = '';
             if(id) {
-                const updatesListHTML = r.updates.map(up => {
+                // الفرز التلقائي للتحديثات لضمان الترتيب الزمني الصحيح دائماً
+                const sortedUpdates = [...r.updates].sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+                const updatesListHTML = sortedUpdates.map(up => {
                     let attachmentHTML = '';
                     if(up.attachmentPath) {
                         const cleanPath = up.attachmentPath.replace(/^["']+|["']+$/g, '').trim();
@@ -1428,6 +1452,11 @@
                     `;
                 }).join('');
 
+                // جلب الوقت الحالي لتعبئة الحقل افتراضياً
+                const now = new Date();
+                const tzOffset = now.getTimezoneOffset() * 60000;
+                const localISOTime = (new Date(now - tzOffset)).toISOString().slice(0, 16);
+
                 updatesSectionHTML = `
                     <div class="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
                         <h4 class="text-lg font-bold mb-4 dark:text-white"><i class="fas fa-comments text-blue-500 ml-2"></i> سجل التحديثات والتعليقات (${r.updates.length})</h4>
@@ -1436,10 +1465,18 @@
                             <label class="block text-sm font-bold mb-2 dark:text-gray-300">إضافة تحديث أو تعليق جديد (باسمك)</label>
                             <textarea id="req_upd_text" class="form-input mb-3 h-20 bg-white" placeholder="مثال: تم إرسال الإيميل للبنك ننتظر الرد..."></textarea>
                             
-                            <label class="block text-sm font-bold mb-1 dark:text-gray-300">ربط مرفق محلي (اختياري)</label>
-                            <p class="text-[10px] text-gray-500 mb-2">انسخ مسار الملف من جهازك والصقه هنا لسهولة الرجوع إليه لاحقاً.</p>
-                            <div class="flex gap-2 items-center">
-                                <input type="text" id="req_upd_attach" class="form-input flex-1 bg-white" dir="ltr" placeholder='C:\\path\\to\\file.pdf'>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1"><i class="fas fa-clock ml-1"></i> وقت التحديث (يُمكن تعديله إن كان قديماً)</label>
+                                    <input type="datetime-local" id="req_upd_time" class="form-input bg-white text-sm" value="${localISOTime}">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-600 dark:text-gray-400 mb-1"><i class="fas fa-paperclip ml-1"></i> مسار مرفق محلي (اختياري)</label>
+                                    <input type="text" id="req_upd_attach" class="form-input bg-white text-sm" dir="ltr" placeholder='C:\\path\\to\\file.pdf'>
+                                </div>
+                            </div>
+
+                            <div class="flex justify-end mt-2">
                                 <button type="button" onclick="saveReqUpdate('${id}')" class="bg-blue-600 hover:bg-blue-800 text-white px-6 py-2 rounded-lg font-bold shadow transition"><i class="fas fa-paper-plane ml-2"></i> إضافة التحديث</button>
                             </div>
                         </div>
@@ -1514,16 +1551,23 @@
         function saveReqUpdate(reqId) {
             const text = document.getElementById('req_upd_text').value.trim();
             let attach = document.getElementById('req_upd_attach').value.trim();
+            let timeStr = document.getElementById('req_upd_time').value;
             
             attach = attach.replace(/^["']+|["']+$/g, '').trim();
 
             if(!text) { showToast('يجب كتابة نص التحديث', 'error'); return; }
 
+            // تحديد الوقت بناءً على اختيار المستخدم
+            let timestamp = new Date().toISOString();
+            if(timeStr) {
+                timestamp = new Date(timeStr).toISOString();
+            }
+
             const reqIdx = db.requirements.findIndex(x => x.id === reqId);
             if(reqIdx > -1) {
                 const newUpdate = {
                     id: generateId(),
-                    timestamp: new Date().toISOString(),
+                    timestamp: timestamp,
                     text: text,
                     attachmentPath: attach,
                     user: activeSessionUser ? activeSessionUser.name : 'مستخدم مجهول'
