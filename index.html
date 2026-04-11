@@ -149,7 +149,7 @@
         </nav>
         <div class="p-4 border-t border-blue-800 text-sm text-center text-blue-300 flex justify-center items-center gap-2 font-bold">
             <span class="w-2 h-2 rounded-full bg-green-400 animate-pulse" id="sidebar-sync-indicator"></span>
-            الإصدار 1.8.4 (Isolation Fix)
+            الإصدار 1.8.2 (Stable Base)
         </div>
     </aside>
 
@@ -2078,7 +2078,8 @@
             let html = '';
 
             if (type === 'employee') {
-                const id = document.getElementById('rep_empId').value || directId;
+                const id = document.getElementById('rep_empId') ? document.getElementById('rep_empId').value : directId;
+                if(!id && directId) id = directId;
                 if(!id) return;
                 const emp = window.db.employees.find(e => e.id === id);
                 const assigns = window.db.assignments.filter(a => a.employeeId === id && a.status === 'نشط');
