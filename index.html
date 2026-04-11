@@ -149,7 +149,7 @@
         </nav>
         <div class="p-4 border-t border-blue-800 text-sm text-center text-blue-300 flex justify-center items-center gap-2 font-bold">
             <span class="w-2 h-2 rounded-full bg-green-400 animate-pulse" id="sidebar-sync-indicator"></span>
-            الإصدار 1.8.2 (Stable Base)
+            الإصدار 1.8.5 (Final Isolation Fix)
         </div>
     </aside>
 
@@ -456,15 +456,26 @@
 
         window.activeSessionUser = null;
         
-        // متغيرات التبويبات السريعة للمهام والمتطلبات
-        window.taskFilterTab = 'open'; // open, late, closed, all
-        window.reqFilterTab = 'open';  // open, late, closed, all
+        window.taskFilterTab = 'open'; 
+        window.reqFilterTab = 'open';  
 
         window.getCurrentEmployeeId = function() {
             if (!window.activeSessionUser) return null;
             if (window.activeSessionUser.employeeId) return window.activeSessionUser.employeeId;
-            const emp = window.db.employees.find(e => e.name === window.activeSessionUser.name);
-            return emp ? emp.id : null;
+            
+            // Self-healing: محاولة إصلاح ذاتية بربط الحساب بالموظف إذا تطابق الاسم تماماً
+            const emp = window.db.employees.find(e => e.name.trim() === window.activeSessionUser.name.trim());
+            if (emp) {
+                window.activeSessionUser.employeeId = emp.id;
+                const uIdx = window.db.users.findIndex(u => u.id === window.activeSessionUser.id);
+                if (uIdx > -1) {
+                    window.db.users[uIdx].employeeId = emp.id;
+                    window.saveDB();
+                    sessionStorage.setItem('activeAppUser', JSON.stringify(window.activeSessionUser));
+                }
+                return emp.id;
+            }
+            return null;
         };
 
         window.getAllowedEmployees = function() {
@@ -474,6 +485,8 @@
 
             const scope = window.activeSessionUser.assignmentScope || 'self';
             const myEmpId = window.getCurrentEmployeeId();
+            if (!myEmpId) return [];
+
             const specificIds = window.activeSessionUser.specificAssignees || [];
 
             if (scope === 'all') return allEmps;
@@ -527,8 +540,8 @@
             if(user) {
                 sessionStorage.setItem('activeAppUser', JSON.stringify(user));
                 window.checkAppAuthentication();
-                window.showToast(`أهلاً بك، ${user.name}`, 'success');
-                window.logAction('تسجيل دخول', 'النظام', '0', `تسجيل دخول للنظام من المتصفح`, user.name);
+                window.showToast('أهلاً بك، ' + user.name, 'success');
+                window.logAction('تسجيل دخول', 'النظام', '0', 'تسجيل دخول للنظام من المتصفح', user.name);
             } else {
                 window.showToast('اسم المستخدم أو كلمة المرور غير صحيحة', 'error');
             }
@@ -802,7 +815,6 @@
             'audit': 'سجل الحركة', 'settings': 'النظام والإعدادات'
         };
 
-        // دوال مساعدة للانتقال السريع من لوحة القيادة
         window.navToTasks = function(tab) {
             window.taskFilterTab = tab;
             window.nav('tasks');
@@ -882,7 +894,14 @@
             const v = document.getElementById('view-dashboard');
             
             const isAdmin = window.activeSessionUser && window.activeSessionUser.role === 'admin';
+            const myEmpId = window.getCurrentEmployeeId();
             const allowedEmpIds = window.getAllowedEmployees().map(e => e.id);
+
+            let missingLinkWarning = (!isAdmin && !myEmpId) ? 
+                '<div class="bg-red-100 border-r-4 border-red-500 text-red-700 p-4 mb-6 rounded shadow-sm">' +
+                    '<p class="font-bold"><i class="fas fa-exclamation-triangle ml-2"></i> حسابك غير مربوط بملف موظف!</p>' +
+                    '<p class="text-sm mt-1">عذراً، لن تتمكن من رؤية المهام أو المتطلبات حتى يقوم مدير النظام بالدخول إلى الإعدادات > إدارة الحسابات، وتعديل حسابك لربطه باسمك في قائمة الموظفين.</p>' +
+                '</div>' : '';
 
             const myReqs = isAdmin ? window.db.requirements : window.db.requirements.filter(r => allowedEmpIds.includes(r.employeeId));
             const myTasksIds = [...new Set(myReqs.map(r => r.taskId))];
@@ -942,7 +961,7 @@
                 lateTasksListHTML = '<li class="text-gray-500">لا توجد مهام متأخرة</li>';
             }
 
-            v.innerHTML = '<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">' +
+            v.innerHTML = missingLinkWarning + '<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">' +
                 '<div onclick="' + (isAdmin ? 'window.nav(\'employees\')' : '') + '" class="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition transform hover:-translate-y-1 bg-white dark:bg-darkcard p-4 rounded-lg shadow border-r-4 border-blue-500 flex items-center justify-between">' +
                     '<div><p class="text-gray-500 dark:text-gray-400 text-sm">الموظفون النشطون</p><h3 class="text-2xl font-bold dark:text-white">' + activeEmpCount + '</h3></div>' +
                     '<div class="text-blue-500 bg-blue-100 dark:bg-blue-900 p-3 rounded-full"><i class="fas fa-users"></i></div>' +
@@ -1228,7 +1247,11 @@
 
         window.renderAssignments = function() {
             const v = document.getElementById('view-assignments');
-            v.innerHTML = '<div class="flex justify-between items-center mb-4">' +
+            
+            const isAdmin = window.activeSessionUser && window.activeSessionUser.role === 'admin';
+            let missingLinkWarning = (!isAdmin && !window.getCurrentEmployeeId()) ? '<div class="bg-red-100 border-r-4 border-red-500 text-red-700 p-3 mb-4 rounded shadow-sm text-sm font-bold"><i class="fas fa-exclamation-circle ml-1"></i> حسابك غير مربوط بملف موظف. لا توجد بيانات لعرضها. يرجى مراجعة الإدارة.</div>' : '';
+
+            v.innerHTML = missingLinkWarning + '<div class="flex justify-between items-center mb-4">' +
                 '<button onclick="window.openAssignForm()" class="bg-indigo-600 hover:bg-indigo-800 text-white px-4 py-2 rounded shadow transition"><i class="fas fa-link ml-2"></i> إسناد جديد</button>' +
                 '<input type="text" id="assign-search" placeholder="بحث في الإسنادات والعهد..." class="form-input w-64 border-indigo-200" onkeyup="window.filterAssignments()">' +
             '</div>' +
@@ -1329,6 +1352,8 @@
 
         window.renderTasks = function() {
             const v = document.getElementById('view-tasks');
+            const isAdmin = window.activeSessionUser && window.activeSessionUser.role === 'admin';
+            let missingLinkWarning = (!isAdmin && !window.getCurrentEmployeeId()) ? '<div class="bg-red-100 border-r-4 border-red-500 text-red-700 p-3 mb-4 rounded shadow-sm text-sm font-bold"><i class="fas fa-exclamation-circle ml-1"></i> حسابك غير مربوط بملف موظف. لا توجد بيانات لعرضها. يرجى مراجعة الإدارة.</div>' : '';
             
             const activeClass = "bg-blue-600 text-white shadow-md";
             const inactiveClass = "bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600";
@@ -1340,7 +1365,7 @@
                 '<button onclick="window.changeTaskTab(\'all\')" class="px-5 py-1.5 rounded-md text-sm font-bold transition-all ' + (window.taskFilterTab==='all' ? activeClass : inactiveClass) + '"><i class="fas fa-list ml-1"></i> الكل</button>' +
             '</div>';
 
-            v.innerHTML = '<div class="flex justify-between items-end mb-4">' +
+            v.innerHTML = missingLinkWarning + '<div class="flex justify-between items-end mb-4">' +
                 tabsHTML +
                 '<button onclick="window.openTaskForm()" class="bg-green-600 hover:bg-green-800 text-white px-4 py-2 rounded shadow transition font-bold mb-4"><i class="fas fa-plus ml-2"></i> مهمة جديدة</button>' +
             '</div>' +
@@ -1426,7 +1451,6 @@
                        (selectedStatuses.length === 0 || selectedStatuses.includes(t.status));
             });
 
-            // تطبيق فلتر التبويبات السريعة (Quick Tabs)
             if (window.taskFilterTab === 'open') {
                 filtered = filtered.filter(t => !closedTaskStatuses.includes(t.status));
             } else if (window.taskFilterTab === 'closed') {
@@ -1540,7 +1564,6 @@
                 const taskFilter = document.getElementById('fr_task');
                 if (taskFilter) { 
                     taskFilter.value = taskId; 
-                    // تأكد من أن التبويب مفتوح للكل لكي نرى المتطلبات حتى لو مغلقة
                     window.reqFilterTab = 'all';
                     window.renderRequirements();
                 }
@@ -1560,6 +1583,8 @@
             const isAdmin = window.activeSessionUser && window.activeSessionUser.role === 'admin';
             const allowedEmpIds = window.getAllowedEmployees().map(e => e.id);
             
+            let missingLinkWarning = (!isAdmin && !window.getCurrentEmployeeId()) ? '<div class="bg-red-100 border-r-4 border-red-500 text-red-700 p-3 mb-4 rounded shadow-sm text-sm font-bold"><i class="fas fa-exclamation-circle ml-1"></i> حسابك غير مربوط بملف موظف. لا توجد بيانات لعرضها. يرجى مراجعة الإدارة.</div>' : '';
+
             let availableTasks = window.db.tasks;
             if (!isAdmin) {
                 const myTaskIds = window.db.requirements.filter(req => allowedEmpIds.includes(req.employeeId)).map(req => req.taskId);
@@ -1583,7 +1608,7 @@
                 '<button onclick="window.changeReqTab(\'all\')" class="px-5 py-1.5 rounded-md text-sm font-bold transition-all ' + (window.reqFilterTab==='all' ? activeClass : inactiveClass) + '"><i class="fas fa-list ml-1"></i> الكل</button>' +
             '</div>';
 
-            v.innerHTML = '<div class="flex justify-between items-end mb-4">' +
+            v.innerHTML = missingLinkWarning + '<div class="flex flex-wrap justify-between items-end mb-4 gap-2">' +
                 tabsHTML +
                 '<button onclick="window.openReqForm()" class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded shadow transition font-bold mb-4"><i class="fas fa-plus ml-2"></i> متطلب جديد</button>' +
             '</div>' +
@@ -1636,7 +1661,6 @@
                 '</table>' +
             '</div>';
             
-            // احتفاظ بالفلتر إن كان موجوداً
             const fTask = document.getElementById('fr_task');
             if (fTask && window._lastSelectedTaskFilter) {
                 fTask.value = window._lastSelectedTaskFilter;
@@ -1659,7 +1683,7 @@
             if (!tbody) return;
 
             const fTask = document.getElementById('fr_task').value;
-            window._lastSelectedTaskFilter = fTask; // حفظ التحديد للتبويبات
+            window._lastSelectedTaskFilter = fTask; 
             
             const fTitle = document.getElementById('fr_title').value.toLowerCase();
             const fEmp = document.getElementById('fr_emp').value;
@@ -1680,7 +1704,6 @@
                        (selectedStatuses.length === 0 || selectedStatuses.includes(r.status));
             });
 
-            // تطبيق فلتر التبويبات السريعة
             if (window.reqFilterTab === 'open') {
                 filtered = filtered.filter(r => !closedReqStatuses.includes(r.status));
             } else if (window.reqFilterTab === 'closed') {
@@ -1761,8 +1784,6 @@
             }
             let empsOpts = allowedEmpsOpts.map(e => '<option value="' + e.id + '" ' + (r.employeeId===e.id?'selected':'') + '>' + e.name + '</option>').join('');
             
-            const empSelectDisabled = (!isAdmin && allowedEmpIds.length <= 1) ? 'disabled' : '';
-
             let updatesSectionHTML = '';
             if(id) {
                 const sortedUpdates = [...r.updates].sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
@@ -1831,7 +1852,7 @@
                 formHTML = '<form onsubmit="window.saveReq(event, \'' + id + '\')" class="grid grid-cols-1 md:grid-cols-2 gap-4">' +
                     '<div class="md:col-span-2"><label class="block text-sm mb-1 dark:text-gray-300">المهمة الأم</label><select id="rq_task" required class="form-input font-bold text-primary">' + tasksOpts + '</select></div>' +
                     '<div class="md:col-span-2"><label class="block text-sm mb-1 dark:text-gray-300">وصف المتطلب (العنوان)</label><input type="text" id="rq_title" value="' + (r.title||'') + '" required class="form-input font-bold"></div>' +
-                    '<div><label class="block text-sm mb-1 dark:text-gray-300">الموظف المسؤول</label><select id="rq_emp" required class="form-input" ' + empSelectDisabled + '>' + empsOpts + '</select></div>' +
+                    '<div><label class="block text-sm mb-1 dark:text-gray-300">الموظف المسؤول</label><select id="rq_emp" required class="form-input">' + empsOpts + '</select></div>' +
                     '<div><label class="block text-sm mb-1 dark:text-gray-300">تاريخ الاستحقاق</label><input type="date" id="rq_due" value="' + (r.dueDate||'') + '" required class="form-input"></div>' +
                     '<div><label class="block text-sm mb-1 dark:text-gray-300">الحالة</label><select id="rq_status" class="form-input font-bold text-blue-700">' +
                         '<option ' + (r.status==='جديد'?'selected':'') + '>جديد</option>' +
@@ -1874,7 +1895,7 @@
             const allowedEmpIds = window.getAllowedEmployees().map(emp => emp.id);
             const empField = document.getElementById('rq_emp');
             
-            let finalEmpId = empField.value;
+            let finalEmpId = empField ? empField.value : window.getCurrentEmployeeId();
             if (!isAdmin && !allowedEmpIds.includes(finalEmpId)) {
                 finalEmpId = window.getCurrentEmployeeId();
             }
@@ -2163,7 +2184,7 @@
             let html = '';
 
             if (type === 'employee') {
-                const id = document.getElementById('rep_empId') ? document.getElementById('rep_empId').value : directId;
+                let id = document.getElementById('rep_empId') ? document.getElementById('rep_empId').value : null;
                 if(!id && directId) id = directId;
                 if(!id) return;
                 const emp = window.db.employees.find(e => e.id === id);
@@ -2226,7 +2247,7 @@
                 const completedCount = reqs.filter(r=>r.status==='مكتمل').length;
                 const prog = reqs.length === 0 ? 0 : Math.round((completedCount/reqs.length)*100);
 
-                html = '<div style="width: 100%; margin: 0; padding: 0;">' +
+                html = '<div style="width: 100%; margin: 0; padding: 0; font-family: \'Tajawal\', Arial, sans-serif; direction: rtl; font-size: 11px;">' +
                     '<div style="text-align:center; border-bottom: 2px solid #000; padding-bottom: 5px; margin-bottom: 15px;">' +
                         '<h2 style="margin: 0; font-size: 20px; font-weight: 900;">التقرير التتبعي الشامل للمهمة</h2>' +
                         '<p style="margin: 3px 0 0 0; font-size: 11px; color: #333;">تاريخ الاستخراج: ' + new Date().toLocaleString('ar-SA') + ' | نظام الإدارة المالية ERP</p>' +
@@ -2459,6 +2480,14 @@
         window.saveSystemUser = function(e, id) {
             e.preventDefault();
             const un = document.getElementById('usr_username').value.trim();
+            const role = document.getElementById('usr_role').value;
+            const empId = document.getElementById('usr_employeeId').value || null;
+
+            // قفل حماية: منع إنشاء موظف عادي بدون ربطه بملف
+            if (role === 'user' && !empId) {
+                window.showToast('يجب ربط الحساب بملف موظف حتى يتمكن من رؤية مهامه!', 'error');
+                return;
+            }
             
             if(window.db.users.find(u => u.username.toLowerCase() === un.toLowerCase() && u.id !== id)) {
                 window.showToast('اسم المستخدم موجود مسبقاً لموظف آخر، اختر اسماً آخر', 'error');
@@ -2470,10 +2499,10 @@
 
             const data = {
                 name: document.getElementById('usr_name').value.trim(),
-                employeeId: document.getElementById('usr_employeeId').value || null,
+                employeeId: empId,
                 username: un,
                 password: document.getElementById('usr_password').value.trim(),
-                role: document.getElementById('usr_role').value,
+                role: role,
                 assignmentScope: scope,
                 specificAssignees: specific
             };
