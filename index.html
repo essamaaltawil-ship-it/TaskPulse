@@ -455,6 +455,10 @@
         };
 
         window.activeSessionUser = null;
+        
+        // متغيرات التبويبات السريعة للمهام والمتطلبات
+        window.taskFilterTab = 'open'; // open, late, closed, all
+        window.reqFilterTab = 'open';  // open, late, closed, all
 
         window.getCurrentEmployeeId = function() {
             if (!window.activeSessionUser) return null;
@@ -798,6 +802,17 @@
             'audit': 'سجل الحركة', 'settings': 'النظام والإعدادات'
         };
 
+        // دوال مساعدة للانتقال السريع من لوحة القيادة
+        window.navToTasks = function(tab) {
+            window.taskFilterTab = tab;
+            window.nav('tasks');
+        };
+
+        window.navToReqs = function(tab) {
+            window.reqFilterTab = tab;
+            window.nav('requirements');
+        };
+
         window.nav = function(section) {
             document.querySelectorAll('.nav-link').forEach(el => {
                 el.classList.remove('bg-blue-800', 'border-blue-400');
@@ -936,19 +951,19 @@
                     '<div><p class="text-gray-500 dark:text-gray-400 text-sm">عناصر العمل النشطة</p><h3 class="text-2xl font-bold dark:text-white">' + activeElements + '</h3></div>' +
                     '<div class="text-indigo-500 bg-indigo-100 dark:bg-indigo-900 p-3 rounded-full"><i class="fas fa-cubes"></i></div>' +
                 '</div>' +
-                '<div onclick="window.nav(\'tasks\')" class="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition transform hover:-translate-y-1 bg-white dark:bg-darkcard p-4 rounded-lg shadow border-r-4 border-green-500 flex items-center justify-between">' +
+                '<div onclick="window.navToTasks(\'open\')" class="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition transform hover:-translate-y-1 bg-white dark:bg-darkcard p-4 rounded-lg shadow border-r-4 border-green-500 flex items-center justify-between">' +
                     '<div><p class="text-gray-500 dark:text-gray-400 text-sm">المهام المفتوحة</p><h3 class="text-2xl font-bold dark:text-white">' + openTasks + '</h3></div>' +
                     '<div class="text-green-500 bg-green-100 dark:bg-green-900 p-3 rounded-full"><i class="fas fa-tasks"></i></div>' +
                 '</div>' +
-                '<div onclick="window.nav(\'tasks\')" class="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition transform hover:-translate-y-1 bg-white dark:bg-darkcard p-4 rounded-lg shadow border-r-4 border-red-500 flex items-center justify-between">' +
+                '<div onclick="window.navToTasks(\'late\')" class="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition transform hover:-translate-y-1 bg-white dark:bg-darkcard p-4 rounded-lg shadow border-r-4 border-red-500 flex items-center justify-between">' +
                     '<div><p class="text-gray-500 dark:text-gray-400 text-sm">المهام المتأخرة</p><h3 class="text-2xl font-bold dark:text-white">' + lateTasks + '</h3></div>' +
                     '<div class="text-red-500 bg-red-100 dark:bg-red-900 p-3 rounded-full"><i class="fas fa-exclamation-circle"></i></div>' +
                 '</div>' +
-                '<div onclick="window.nav(\'requirements\')" class="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition transform hover:-translate-y-1 bg-white dark:bg-darkcard p-4 rounded-lg shadow border-r-4 border-yellow-500 flex items-center justify-between">' +
+                '<div onclick="window.navToReqs(\'open\')" class="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition transform hover:-translate-y-1 bg-white dark:bg-darkcard p-4 rounded-lg shadow border-r-4 border-yellow-500 flex items-center justify-between">' +
                     '<div><p class="text-gray-500 dark:text-gray-400 text-sm">المتطلبات المفتوحة</p><h3 class="text-2xl font-bold dark:text-white">' + openReqs + '</h3></div>' +
                     '<div class="text-yellow-500 bg-yellow-100 dark:bg-yellow-900 p-3 rounded-full"><i class="fas fa-list"></i></div>' +
                 '</div>' +
-                '<div class="' + (isAdmin ? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition transform hover:-translate-y-1' : '') + ' bg-white dark:bg-darkcard p-4 rounded-lg shadow border-r-4 border-purple-500 flex items-center justify-between">' +
+                '<div onclick="window.nav(\'handovers\')" class="' + (isAdmin ? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition transform hover:-translate-y-1' : '') + ' bg-white dark:bg-darkcard p-4 rounded-lg shadow border-r-4 border-purple-500 flex items-center justify-between">' +
                     '<div><p class="text-gray-500 dark:text-gray-400 text-sm">تسليم واستلام مفتوح</p><h3 class="text-2xl font-bold dark:text-white">' + openHandovers + '</h3></div>' +
                     '<div class="text-purple-500 bg-purple-100 dark:bg-purple-900 p-3 rounded-full"><i class="fas fa-exchange-alt"></i></div>' +
                 '</div>' +
@@ -1307,10 +1322,27 @@
 
         window.currentTaskSort = { col: 'id', dir: 'asc' };
 
+        window.changeTaskTab = function(tabName) {
+            window.taskFilterTab = tabName;
+            window.renderTasks();
+        };
+
         window.renderTasks = function() {
             const v = document.getElementById('view-tasks');
-            v.innerHTML = '<div class="flex justify-between items-center mb-4">' +
-                '<button onclick="window.openTaskForm()" class="bg-green-600 hover:bg-green-800 text-white px-4 py-2 rounded shadow transition"><i class="fas fa-plus ml-2"></i> مهمة جديدة</button>' +
+            
+            const activeClass = "bg-blue-600 text-white shadow-md";
+            const inactiveClass = "bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600";
+
+            let tabsHTML = '<div class="flex flex-wrap gap-2 mb-4 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg w-fit border border-gray-200 dark:border-gray-700">' +
+                '<button onclick="window.changeTaskTab(\'open\')" class="px-5 py-1.5 rounded-md text-sm font-bold transition-all ' + (window.taskFilterTab==='open' ? activeClass : inactiveClass) + '"><i class="fas fa-folder-open ml-1"></i> المهام القائمة</button>' +
+                '<button onclick="window.changeTaskTab(\'late\')" class="px-5 py-1.5 rounded-md text-sm font-bold transition-all ' + (window.taskFilterTab==='late' ? 'bg-red-500 text-white shadow-md' : inactiveClass) + '"><i class="fas fa-exclamation-circle ml-1"></i> المتأخرة</button>' +
+                '<button onclick="window.changeTaskTab(\'closed\')" class="px-5 py-1.5 rounded-md text-sm font-bold transition-all ' + (window.taskFilterTab==='closed' ? activeClass : inactiveClass) + '"><i class="fas fa-check-double ml-1"></i> المغلقة</button>' +
+                '<button onclick="window.changeTaskTab(\'all\')" class="px-5 py-1.5 rounded-md text-sm font-bold transition-all ' + (window.taskFilterTab==='all' ? activeClass : inactiveClass) + '"><i class="fas fa-list ml-1"></i> الكل</button>' +
+            '</div>';
+
+            v.innerHTML = '<div class="flex justify-between items-end mb-4">' +
+                tabsHTML +
+                '<button onclick="window.openTaskForm()" class="bg-green-600 hover:bg-green-800 text-white px-4 py-2 rounded shadow transition font-bold mb-4"><i class="fas fa-plus ml-2"></i> مهمة جديدة</button>' +
             '</div>' +
             '<div class="bg-white dark:bg-darkcard rounded-lg shadow min-h-[400px] flex flex-col">' +
                 '<div class="overflow-x-auto">' +
@@ -1330,7 +1362,7 @@
                                     '<input type="date" id="ft_date" class="header-input" onchange="window.filterTaskTable()">' +
                                 '</th>' +
                                 '<th class="px-4 py-2 align-top w-48 relative">' +
-                                    '<div class="cursor-pointer flex justify-between items-center mb-1" onclick="window.sortTasks(\'status\')"><span>الحالة</span> <i class="fas fa-sort text-gray-400"></i></div>' +
+                                    '<div class="cursor-pointer flex justify-between items-center mb-1" onclick="window.sortTasks(\'status\')"><span>الحالة (فرز دقيق)</span> <i class="fas fa-sort text-gray-400"></i></div>' +
                                     '<details class="filter-dropdown relative group w-full">' +
                                         '<summary class="header-input cursor-pointer bg-white flex justify-between items-center">' +
                                             '<span class="truncate">الحالات...</span><i class="fas fa-chevron-down text-gray-400 text-xs"></i>' +
@@ -1384,12 +1416,24 @@
             const allowedEmpIds = window.getAllowedEmployees().map(e => e.id);
             const myTaskIds = window.db.requirements.filter(r => allowedEmpIds.includes(r.employeeId)).map(r => r.taskId);
 
+            const closedTaskStatuses = ['مقفلة', 'ملغاة'];
+            const todayStr = new Date().toISOString().split('T')[0];
+
             let filtered = window.db.tasks.filter(t => {
                 return t.id.toLowerCase().includes(fId) &&
                        t.title.toLowerCase().includes(fTitle) &&
                        (fDate === '' || t.dueDate === fDate) &&
                        (selectedStatuses.length === 0 || selectedStatuses.includes(t.status));
             });
+
+            // تطبيق فلتر التبويبات السريعة (Quick Tabs)
+            if (window.taskFilterTab === 'open') {
+                filtered = filtered.filter(t => !closedTaskStatuses.includes(t.status));
+            } else if (window.taskFilterTab === 'closed') {
+                filtered = filtered.filter(t => closedTaskStatuses.includes(t.status));
+            } else if (window.taskFilterTab === 'late') {
+                filtered = filtered.filter(t => !closedTaskStatuses.includes(t.status) && t.dueDate < todayStr);
+            }
 
             if (!isAdmin) {
                 filtered = filtered.filter(t => myTaskIds.includes(t.id) || t.ownerId === window.activeSessionUser.id);
@@ -1413,7 +1457,7 @@
                 if(t.status === 'مكتملة فنيًا' || t.status === 'مقفلة') statusClass = 'bg-green-100 text-green-800';
                 if(t.status === 'بانتظار متطلبات') statusClass = 'bg-yellow-100 text-yellow-800';
                 
-                const lateClass = new Date(t.dueDate) < new Date() && t.status !== 'مقفلة' ? 'text-red-500 font-bold' : '';
+                const lateClass = new Date(t.dueDate) < new Date() && !closedTaskStatuses.includes(t.status) ? 'text-red-500 font-bold' : '';
                 
                 let actionsHTML = '<button onclick="window.viewTaskDetails(\'' + t.id + '\')" class="text-blue-500 hover:text-blue-700 text-sm bg-blue-50 dark:bg-blue-900 px-2 py-1 rounded font-bold shadow-sm border border-blue-200">إدارة المهمة</button>';
                 if(isAdmin) {
@@ -1435,7 +1479,7 @@
                     '<td class="px-4 py-3 flex gap-2">' + actionsHTML + '</td>' +
                 '</tr>';
             }).join('');
-            tbody.innerHTML = rowsHTML;
+            tbody.innerHTML = rowsHTML || '<tr><td colspan="6" class="text-center py-4 text-gray-500">لا توجد مهام مطابقة للفلاتر الحالية.</td></tr>';
         };
 
         window.deleteTask = function(id) {
@@ -1494,11 +1538,21 @@
             window.nav('requirements');
             setTimeout(() => {
                 const taskFilter = document.getElementById('fr_task');
-                if (taskFilter) { taskFilter.value = taskId; window.filterRequirements(); }
+                if (taskFilter) { 
+                    taskFilter.value = taskId; 
+                    // تأكد من أن التبويب مفتوح للكل لكي نرى المتطلبات حتى لو مغلقة
+                    window.reqFilterTab = 'all';
+                    window.renderRequirements();
+                }
             }, 100);
         };
 
         window.currentReqSort = { col: 'title', dir: 'asc' };
+
+        window.changeReqTab = function(tabName) {
+            window.reqFilterTab = tabName;
+            window.renderRequirements();
+        };
 
         window.renderRequirements = function() {
             const v = document.getElementById('view-requirements');
@@ -1519,8 +1573,19 @@
             }
             let empOpts = availableEmps.map(e => '<option value="' + e.id + '">' + e.name + '</option>').join('');
 
-            v.innerHTML = '<div class="flex flex-wrap justify-between items-center mb-4 gap-2">' +
-                '<button onclick="window.openReqForm()" class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded shadow transition font-bold"><i class="fas fa-plus ml-2"></i> متطلب جديد</button>' +
+            const activeClass = "bg-yellow-600 text-white shadow-md";
+            const inactiveClass = "bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-yellow-50 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600";
+
+            let tabsHTML = '<div class="flex flex-wrap gap-2 mb-4 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg w-fit border border-gray-200 dark:border-gray-700">' +
+                '<button onclick="window.changeReqTab(\'open\')" class="px-5 py-1.5 rounded-md text-sm font-bold transition-all ' + (window.reqFilterTab==='open' ? activeClass : inactiveClass) + '"><i class="fas fa-folder-open ml-1"></i> المتطلبات القائمة</button>' +
+                '<button onclick="window.changeReqTab(\'late\')" class="px-5 py-1.5 rounded-md text-sm font-bold transition-all ' + (window.reqFilterTab==='late' ? 'bg-red-500 text-white shadow-md' : inactiveClass) + '"><i class="fas fa-exclamation-circle ml-1"></i> المتأخرة</button>' +
+                '<button onclick="window.changeReqTab(\'closed\')" class="px-5 py-1.5 rounded-md text-sm font-bold transition-all ' + (window.reqFilterTab==='closed' ? activeClass : inactiveClass) + '"><i class="fas fa-check-double ml-1"></i> المغلقة</button>' +
+                '<button onclick="window.changeReqTab(\'all\')" class="px-5 py-1.5 rounded-md text-sm font-bold transition-all ' + (window.reqFilterTab==='all' ? activeClass : inactiveClass) + '"><i class="fas fa-list ml-1"></i> الكل</button>' +
+            '</div>';
+
+            v.innerHTML = '<div class="flex justify-between items-end mb-4">' +
+                tabsHTML +
+                '<button onclick="window.openReqForm()" class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded shadow transition font-bold mb-4"><i class="fas fa-plus ml-2"></i> متطلب جديد</button>' +
             '</div>' +
             '<div class="bg-white dark:bg-darkcard rounded-lg shadow overflow-x-auto min-h-[400px]">' +
                 '<table class="min-w-full text-right text-sm">' +
@@ -1543,7 +1608,7 @@
                                 '<input type="date" id="fr_date" onchange="window.filterRequirements()" class="header-input">' +
                             '</th>' +
                             '<th class="px-3 py-2 align-top w-48 relative">' +
-                                '<div class="cursor-pointer flex justify-between items-center mb-1" onclick="window.sortReqs(\'status\')"><span>الحالة</span> <i class="fas fa-sort text-gray-400"></i></div>' +
+                                '<div class="cursor-pointer flex justify-between items-center mb-1" onclick="window.sortReqs(\'status\')"><span>الحالة (فرز دقيق)</span> <i class="fas fa-sort text-gray-400"></i></div>' +
                                 '<details class="filter-dropdown relative group w-full">' +
                                     '<summary class="header-input cursor-pointer bg-white flex justify-between items-center">' +
                                         '<span class="truncate">الحالات...</span><i class="fas fa-chevron-down text-gray-400 text-xs"></i>' +
@@ -1570,6 +1635,12 @@
                     '<tbody id="req-tbody" class="divide-y divide-gray-200 dark:divide-gray-700 dark:text-gray-300"></tbody>' +
                 '</table>' +
             '</div>';
+            
+            // احتفاظ بالفلتر إن كان موجوداً
+            const fTask = document.getElementById('fr_task');
+            if (fTask && window._lastSelectedTaskFilter) {
+                fTask.value = window._lastSelectedTaskFilter;
+            }
             window.filterRequirements();
         };
 
@@ -1588,6 +1659,8 @@
             if (!tbody) return;
 
             const fTask = document.getElementById('fr_task').value;
+            window._lastSelectedTaskFilter = fTask; // حفظ التحديد للتبويبات
+            
             const fTitle = document.getElementById('fr_title').value.toLowerCase();
             const fEmp = document.getElementById('fr_emp').value;
             const fDate = document.getElementById('fr_date').value;
@@ -1596,6 +1669,9 @@
             const isAdmin = window.activeSessionUser && window.activeSessionUser.role === 'admin';
             const allowedEmpIds = window.getAllowedEmployees().map(e => e.id);
 
+            const closedReqStatuses = ['مكتمل', 'مرفوض', 'ملغى'];
+            const todayStr = new Date().toISOString().split('T')[0];
+
             let filtered = window.db.requirements.filter(r => {
                 return (fTask === '' || r.taskId === fTask) &&
                        r.title.toLowerCase().includes(fTitle) &&
@@ -1603,6 +1679,15 @@
                        (fDate === '' || r.dueDate === fDate) &&
                        (selectedStatuses.length === 0 || selectedStatuses.includes(r.status));
             });
+
+            // تطبيق فلتر التبويبات السريعة
+            if (window.reqFilterTab === 'open') {
+                filtered = filtered.filter(r => !closedReqStatuses.includes(r.status));
+            } else if (window.reqFilterTab === 'closed') {
+                filtered = filtered.filter(r => closedReqStatuses.includes(r.status));
+            } else if (window.reqFilterTab === 'late') {
+                filtered = filtered.filter(r => !closedReqStatuses.includes(r.status) && r.dueDate < todayStr);
+            }
 
             if (!isAdmin) {
                 filtered = filtered.filter(r => allowedEmpIds.includes(r.employeeId));
@@ -1627,7 +1712,7 @@
                 if(r.status === 'معاد للتصحيح') statusClass = 'bg-orange-100 text-orange-800';
 
                 const updatesCount = r.updates ? r.updates.length : 0;
-                const lateClass = new Date(r.dueDate) < new Date() && r.status !== 'مكتمل' ? 'text-red-500 font-bold' : '';
+                const lateClass = new Date(r.dueDate) < new Date() && !closedReqStatuses.includes(r.status) ? 'text-red-500 font-bold' : '';
                 const taskShort = task.length > 20 ? task.substring(0,20) + '..' : task;
                 
                 let btnHTML = '<button onclick="window.openReqForm(\'' + r.id + '\')" class="bg-blue-50 text-blue-600 hover:bg-blue-100 px-2 py-1 rounded text-xs font-bold border border-blue-200 transition relative">تحديث';
@@ -1646,7 +1731,7 @@
                     '<td class="px-3 py-2 flex items-center gap-2">' + actionsHTML + '</td>' +
                 '</tr>';
             }).join('');
-            tbody.innerHTML = rowsHTML;
+            tbody.innerHTML = rowsHTML || '<tr><td colspan="6" class="text-center py-4 text-gray-500">لا توجد متطلبات مطابقة للفلاتر الحالية.</td></tr>';
         };
 
         window.deleteReq = function(id) {
